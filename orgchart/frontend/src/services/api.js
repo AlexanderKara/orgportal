@@ -417,6 +417,16 @@ class ApiService {
     return this.throttledRequest(endpoint);
   }
 
+  // Получить сотрудников
+  async getEmployees() {
+    return this.request('/employees');
+  }
+
+  // Получить сотрудников для Telegram мини-приложения (без авторизации)
+  async getEmployeesForTelegram() {
+    return this.request('/employees/telegram-miniapp');
+  }
+
   async getEmployee(id) {
     const token = localStorage.getItem('token');
     const endpoint = token ? `/api/employees/${id}` : `/api/public/employees/${id}`;
@@ -1091,6 +1101,11 @@ class ApiService {
   // Получить токены сотрудника
   async getEmployeeTokens(employeeId) {
     return this.request(`/tokens/employee/${employeeId}`);
+  }
+
+  // Получить токены сотрудника для Telegram мини-приложения (только доступные)
+  async getEmployeeTokensForTelegram(employeeId) {
+    return this.request(`/tokens/telegram-miniapp/employee/${employeeId}`);
   }
 
   // Получить запланированные тиражи токенов (админ, если появится отдельный эндпоинт)

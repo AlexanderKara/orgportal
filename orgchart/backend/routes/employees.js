@@ -860,6 +860,47 @@ const assignBulkRoles = async (req, res) => {
 
 // Routes
 router.get('/', authMiddleware, adminMiddleware, getEmployees);
+
+// Специальный эндпоинт для Telegram мини-приложения (без авторизации)
+router.get('/telegram-miniapp', async (req, res) => {
+  try {
+    const employees = await Employee.findAll({
+      include: [
+        {
+          model: Department,
+          as: 'department',
+          attributes: ['id', 'name']
+        }
+      ],
+      attributes: ['id', 'first_name', 'last_name', 'position', 'department_id'],
+      where: {
+        isActive: true
+      },
+      order: [['first_name', 'ASC'], ['last_name', 'ASC']]
+    });
+
+    res.json({
+      success: true,
+      employees: employees.map(emp => ({
+        id: emp.id,
+        first_name: emp.first_name,
+        last_name: emp.last_name,
+        position: emp.position,
+        department: emp.department ? {
+          id: emp.department.id,
+          name: emp.department.name
+        } : null
+      }))
+    });
+  } catch (error) {
+    console.error('Error getting employees for Telegram mini-app:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Ошибка получения списка сотрудников'
+    });
+  }
+});
+
 router.get('/stats', authMiddleware, adminMiddleware, getEmployeeStats);
 router.get('/:id', authMiddleware, adminMiddleware, getEmployee);
 router.post('/', authMiddleware, adminMiddleware, [

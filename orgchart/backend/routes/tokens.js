@@ -53,6 +53,62 @@ router.get('/debug/employee/:employeeId', async (req, res) => {
 // Получить токены сотрудника (временно без авторизации для отладки)
 router.get('/employee/:employeeId', tokenController.getEmployeeTokens);
 
+// Специальный эндпоинт для Telegram мини-приложения (только доступные токены)
+router.get('/telegram-miniapp/employee/:employeeId', async (req, res) => {
+  try {
+    const { employeeId } = req.params;
+
+    // Проверим, что сотрудник существует
+    const employee = await Employee.findByPk(employeeId);
+    if (!employee) {
+      return res.status(404).json({ message: 'Сотрудник не найден' });
+    }
+
+    // Получаем только доступные токены (не отправленные)
+    const tokens = await Token.findAll({
+      where: { 
+        employeeId,
+        isDirectSent: false,
+        status: 'available'
+      },
+      include: [
+        {
+          model: TokenType,
+          as: 'tokenType',
+          attributes: ['id', 'name', 'value', 'backgroundColor', 'textColor']
+        }
+      ],
+      attributes: ['id', 'publicId', 'employeeId', 'tokenTypeId', 'senderId', 'image', 'description', 'status', 'createdAt', 'updatedAt'],
+      order: [['createdAt', 'DESC']]
+    });
+
+    res.json({
+      success: true,
+      tokens: tokens.map(token => ({
+        id: token.id,
+        publicId: token.publicId,
+        employeeId: token.employeeId,
+        tokenTypeId: token.tokenTypeId,
+        senderId: token.senderId,
+        image: token.image,
+        description: token.description,
+        status: token.status,
+        createdAt: token.createdAt,
+        updatedAt: token.updatedAt,
+        tokenType: token.tokenType,
+        isDirectSent: token.isDirectSent
+      }))
+    });
+  } catch (error) {
+    console.error('Error getting employee tokens for Telegram mini-app:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Ошибка получения токенов сотрудника',
+      error: error.message 
+    });
+  }
+});
+
 // Отправить токен
 router.post('/send', authMiddleware, tokenController.sendToken);
 

@@ -8,11 +8,16 @@ export default defineConfig({
     port: 5173,
     open: true,
     proxy: {
-      '/auth': 'http://localhost:5000',
-      '/api': 'http://localhost:5000',
-      '/uploads': 'http://localhost:5000',
+      '/auth': 'http://localhost:3001',
+      '/api': 'http://localhost:3001',
+      '/uploads': 'http://localhost:3001',
       // добавьте другие пути, если нужно
     },
+  },
+  preview: {
+    port: 4173,
+    host: '0.0.0.0',
+    allowedHosts: ['a-team.moscow', 'www.a-team.moscow', 'localhost', '127.0.0.1'],
   },
   build: {
     outDir: 'dist',
@@ -29,7 +34,7 @@ export default defineConfig({
   },
   base: '/',
   define: {
-    'import.meta.env.VITE_API_URL': JSON.stringify(process.env.VITE_API_URL || 'http://localhost:5000'),
-    'import.meta.env.VITE_FRONTEND_URL': JSON.stringify(process.env.VITE_FRONTEND_URL || 'http://localhost:3001'),
+    'import.meta.env.VITE_API_URL': JSON.stringify(process.env.VITE_API_URL || ''),
+    'import.meta.env.VITE_FRONTEND_URL': JSON.stringify(process.env.VITE_FRONTEND_URL || ''),
   },
 }); 
