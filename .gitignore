@@ -1,0 +1,9 @@
+node_modules
+
+# Large files
+*.zip
+*.tar.gz
+*.rar
+
+# Uploaded files
+orgchart/backend/uploads/
