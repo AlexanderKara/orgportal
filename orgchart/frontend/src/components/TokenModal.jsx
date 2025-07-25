@@ -50,7 +50,7 @@ export default function TokenModal({ isOpen, onClose, onSubmit, token = null }) 
       // Получаем список изображений из папки
       console.log(`Запрашиваем изображения из папки: ${folder}`);
       
-      const response = await fetch(`http://localhost:5000/api/tokens/images/${folder}`);
+      const response = await fetch(`/api/tokens/images/${folder}`);
       
       if (response.ok) {
         const images = await response.json();
@@ -108,7 +108,7 @@ export default function TokenModal({ isOpen, onClose, onSubmit, token = null }) 
 
   const loadAvailableFolders = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/tokens/images/folders');
+      const response = await fetch('/api/tokens/images/folders');
       if (response.ok) {
         const folders = await response.json();
         console.log('Загруженные папки:', folders);
@@ -385,7 +385,7 @@ export default function TokenModal({ isOpen, onClose, onSubmit, token = null }) 
               }}>
                 {formData.image && formData.image !== '🎯' && (formData.image.startsWith('http') || formData.image.startsWith('/uploads/')) ? (
                   <img 
-                    src={formData.image.startsWith('http') ? formData.image : `http://localhost:5000${formData.image}`}
+                    src={formData.image.startsWith('http') ? formData.image : `${formData.image}`}
                     alt="Token preview" 
                     style={{ 
                       margin: '2rem',
@@ -663,7 +663,7 @@ export default function TokenModal({ isOpen, onClose, onSubmit, token = null }) 
                   onClick={async () => {
                     console.log('Тестирование структуры папок...');
                     try {
-                      const response = await fetch('http://localhost:5000/api/tokens/images-test');
+                      const response = await fetch('/api/tokens/images-test');
                       const data = await response.json();
                       console.log('Структура папок:', data);
                     } catch (error) {

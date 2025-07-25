@@ -152,7 +152,7 @@ export default function ConfirmToken() {
                   <div className={`w-12 h-12 ${getTokenTypeInfo(token).color} rounded-lg flex items-center justify-center text-white text-xl`}>
                     {token.image && token.image !== '🎯' && (token.image.startsWith('http') || token.image.startsWith('/uploads/')) ? (
                       <img 
-                        src={token.image.startsWith('http') ? token.image : `http://localhost:5000${token.image}`}
+                        src={token.image.startsWith('http') ? token.image : `${token.image}`}
                         alt="Token" 
                         className="w-8 h-8 object-contain"
                         onError={(e) => {

@@ -52,7 +52,7 @@ export default function TokenEditModal({ isOpen, onClose, onSubmit, token = null
       }
       
       console.log('generateRandomImage вызвана с папкой:', folder);
-      const response = await fetch(`http://localhost:5000/api/tokens/images/${folder}/random`);
+      const response = await fetch(`/api/tokens/images/${folder}/random`);
       
       if (response.ok) {
         const data = await response.json();
@@ -103,7 +103,7 @@ export default function TokenEditModal({ isOpen, onClose, onSubmit, token = null
 
   const loadAvailableFolders = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/tokens/images/folders');
+      const response = await fetch('/api/tokens/images/folders');
       if (response.ok) {
         const folders = await response.json();
         console.log('Загруженные папки:', folders);
@@ -427,7 +427,7 @@ export default function TokenEditModal({ isOpen, onClose, onSubmit, token = null
               }}>
                 {formData.image && formData.image !== '🎯' && (formData.image.startsWith('http') || formData.image.startsWith('/uploads/')) ? (
                   <img 
-                    src={formData.image.startsWith('http') ? formData.image : `http://localhost:5000${formData.image}`}
+                    src={formData.image.startsWith('http') ? formData.image : `${formData.image}`}
                     alt="" 
                     style={{ 
                       margin: '2rem',

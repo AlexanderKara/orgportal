@@ -25,18 +25,18 @@ module.exports = {
       name: 'orgchart-frontend',
       cwd: './orgchart/frontend',
       script: 'npm',
-      args: 'run preview',
+      args: 'run preview -- --host 0.0.0.0 --port 4173',
       instances: 1,
       autorestart: true,
       watch: false,
       max_memory_restart: '512M',
       env: {
         NODE_ENV: 'production',
-        PORT: 3000
+        PORT: 4173
       },
       env_production: {
         NODE_ENV: 'production',
-        PORT: 3000
+        PORT: 4173
       },
       error_file: './logs/frontend-error.log',
       out_file: './logs/frontend-out.log',

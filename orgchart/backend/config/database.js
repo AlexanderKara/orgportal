@@ -1,11 +1,17 @@
 require('dotenv').config();
 
+// Логирование для отладки
+console.log('Database config - DB_HOST:', process.env.DB_HOST);
+console.log('Database config - DB_USER:', process.env.DB_USER);
+console.log('Database config - DB_NAME:', process.env.DB_NAME);
+console.log('Database config - DB_PORT:', process.env.DB_PORT);
+
 module.exports = {
   development: {
-    username: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || 'Vfuhfntz42',
-    database: process.env.DB_NAME || 'orgchart_dev',
-    host: process.env.DB_HOST || 'localhost',
+    username: process.env.DB_USER || 'orgchart',
+    password: process.env.DB_PASSWORD || 'NeWbMxVYA9!3',
+    database: process.env.DB_NAME || 'orgchart',
+    host: process.env.DB_HOST || 'brukolalutaf.beget.app',
     port: process.env.DB_PORT || 3306,
     dialect: 'mysql',
     logging: false, // Отключаем логирование для ускорения
@@ -24,10 +30,10 @@ module.exports = {
     }
   },
   test: {
-    username: process.env.DB_USER_TEST || 'root',
-    password: process.env.DB_PASSWORD_TEST || 'Vfuhfntz42',
+    username: process.env.DB_USER_TEST || 'orgchart',
+    password: process.env.DB_PASSWORD_TEST || 'NeWbMxVYA9!3',
     database: process.env.DB_NAME_TEST || 'orgchart_test',
-    host: process.env.DB_HOST || 'localhost',
+    host: process.env.DB_HOST || 'brukolalutaf.beget.app',
     port: process.env.DB_PORT || 3306,
     dialect: 'mysql',
     logging: false,

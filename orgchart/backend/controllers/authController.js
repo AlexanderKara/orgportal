@@ -44,9 +44,11 @@ const sendTelegramCodeReal = async (telegram, code) => {
 // @route   POST /api/auth/send-code
 // @access  Public
 const sendCode = async (req, res) => {
+  console.log('SEND-CODE CONTROLLER CALLED', req.body);
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.log('VALIDATION ERRORS:', errors.array());
       return res.status(400).json({ 
         success: false, 
         errors: errors.array() 

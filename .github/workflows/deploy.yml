@@ -1,0 +1,28 @@
+name: Deploy to Server
+on:
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        
+      - name: Copy SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          
+      - name: Add server to known_hosts
+        run: ssh-keyscan -H 109.172.37.79 >> ~/.ssh/known_hosts
+        
+      - name: Deploy via SSH
+        run: |
+          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no root@109.172.37.79 'cd /root/orgportal && git pull origin master && ./deploy.sh' 

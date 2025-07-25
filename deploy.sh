@@ -42,6 +42,13 @@ cd frontend
 npm run build
 cd ..
 
+# Копируем собранный фронтенд в Nginx директорию
+echo "📁 Копируем фронтенд в Nginx директорию..."
+mkdir -p /var/www/a-team.moscow
+cp -r frontend/dist/* /var/www/a-team.moscow/
+chown -R www-data:www-data /var/www/a-team.moscow/
+chmod -R 755 /var/www/a-team.moscow/
+
 # Возвращаемся в корневую директорию
 cd ..
 
@@ -61,6 +68,10 @@ pm2 start ecosystem.config.js --env production
 echo "💾 Сохраняем конфигурацию PM2..."
 pm2 save
 
+# Перезапускаем Nginx
+echo "🔄 Перезапускаем Nginx..."
+systemctl reload nginx
+
 # Показываем статус
 echo "📊 Статус приложений:"
 pm2 status
@@ -72,7 +83,7 @@ if [ "$CURRENT_BRANCH" != "master" ]; then
 fi
 
 echo "✅ Деплой завершен успешно!"
-echo "🌐 Фронтенд доступен на: http://localhost:3000"
+echo "🌐 Фронтенд доступен на: https://a-team.moscow"
 echo "🔧 Бэкенд доступен на: http://localhost:3001" 
 
 # Копируем production-сборку фронта в папку веб-сервера
