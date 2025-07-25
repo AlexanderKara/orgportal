@@ -95,11 +95,21 @@ const corsOrigins = process.env.CORS_ORIGIN
 
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin) return callback(null, true);
-    if (process.env.NODE_ENV === 'development' && origin.includes('localhost')) {
+    // Разрешаем запросы без origin (мобильные приложения, Postman, etc.)
+    if (!origin) {
+      console.log('CORS: Allowing request without origin (mobile app, etc.)');
       return callback(null, true);
     }
+    
+    // Разрешаем localhost в development
+    if (process.env.NODE_ENV === 'development' && origin.includes('localhost')) {
+      console.log('CORS: Allowing localhost in development:', origin);
+      return callback(null, true);
+    }
+    
+    // Проверяем разрешенные origins
     if (corsOrigins.indexOf(origin) !== -1) {
+      console.log('CORS: Allowing origin:', origin);
       callback(null, true);
     } else {
       console.log('CORS blocked origin:', origin);
@@ -107,7 +117,10 @@ app.use(cors({
     }
   },
   credentials: true,
-  exposedHeaders: ['Cross-Origin-Resource-Policy']
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+  exposedHeaders: ['Cross-Origin-Resource-Policy'],
+  maxAge: 86400 // 24 часа
 }));
 
 // Rate limiting - более мягкие настройки для auth endpoints

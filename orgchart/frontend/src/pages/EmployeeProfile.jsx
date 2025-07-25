@@ -113,7 +113,31 @@ export default function EmployeeProfile() {
     }
   }, [id]);
 
-  if (!employee) {
+  // Показываем загрузку только если еще загружаемся и нет данных
+  if (loading && !employee) {
+    return (
+      <div className="w-full max-w-none mx-auto min-h-screen flex flex-col">
+        <div className="flex items-center justify-between py-8 border-b border-gray/30 sticky top-0 bg-white z-10 px-4 sm:px-10">
+          <div className="flex items-center gap-3">
+            <User className="w-8 h-8 text-primary" />
+            <span className="text-2xl font-bold font-accent text-primary">Профиль сотрудника</span>
+          </div>
+          <button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray/30 transition" title="Назад">
+            <ArrowLeft className="w-8 h-8 text-dark" />
+          </button>
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-gray-600">Загрузка профиля сотрудника...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Показываем ошибку только если загрузка завершена и сотрудник не найден
+  if (!loading && !employee) {
     return (
       <div className="w-full max-w-none mx-auto min-h-screen flex flex-col">
         <div className="flex items-center justify-between py-8 border-b border-gray/30 sticky top-0 bg-white z-10 px-4 sm:px-10">

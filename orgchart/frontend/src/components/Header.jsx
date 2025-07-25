@@ -108,11 +108,11 @@ export default function Header() {
 
   return (
     <header
-      className="fixed top-0 left-0 w-full bg-white z-[99999] flex items-center py-[30px]"
+      className="fixed top-0 left-0 w-full bg-white z-[99999] flex items-center py-[30px] overflow-hidden"
       style={{ paddingLeft, paddingRight }}
     >
       {isAuthenticated ? (
-        <nav className={`flex items-center bg-gray rounded-[25px] px-1 pr-1 lg:px-2 lg:pr-1 py-1 min-h-[40px] gap-1`}> {/* px-1 и pr-1 для всех размеров, gap-1 между кнопками */}
+        <nav className={`flex items-center bg-gray rounded-[25px] px-1 pr-1 lg:px-2 lg:pr-1 py-1 min-h-[40px] gap-1 flex-shrink-0`}> {/* px-1 и pr-1 для всех размеров, gap-1 между кнопками */}
           {/* Логотип всегда видимый */}
           <NavLink
             to={isAuthenticated ? "/home/hello" : "/"}
@@ -166,8 +166,8 @@ export default function Header() {
           <span className="text-[24px] font-accent text-primary font-bold">A-Team</span>
         </div>
       )}
-      <div className="flex-1" />
-      <div className="ml-2 lg:ml-6">
+      <div className="flex-1 min-w-0" />
+      <div className="ml-2 lg:ml-6 flex-shrink-0">
         {isAuthenticated ? (
           <ProfileMenu />
         ) : isAuthenticated === null ? (

@@ -139,10 +139,16 @@ class ApiService {
       }
     }
 
-    const url = `${this.baseURL}${endpoint}`;
+    // Добавляем timestamp для предотвращения кэширования в Chrome
+    const timestamp = Date.now();
+    const separator = endpoint.includes('?') ? '&' : '?';
+    const url = `${this.baseURL}${endpoint}${separator}_t=${timestamp}`;
     const config = {
       headers: {
         'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
         ...options.headers,
       },
       ...options,
@@ -288,6 +294,13 @@ class ApiService {
         networkError.status = 0;
         throw networkError;
       }
+      // Дополнительная обработка для мобильных устройств
+      if (error.name === 'TypeError' && (error.message.includes('Failed to fetch') || error.message.includes('NetworkError'))) {
+        const mobileNetworkError = new Error('Network error - server unavailable');
+        mobileNetworkError.status = 0;
+        mobileNetworkError.isMobileError = true;
+        throw mobileNetworkError;
+      }
       throw error;
     }
   }
@@ -352,10 +365,34 @@ class ApiService {
 
   // Send authentication code
   async sendCode(login) {
-    return this.request('/api/auth/send-code', {
-      method: 'POST',
-      body: JSON.stringify({ login }),
-    });
+    try {
+      // Проверяем доступность localStorage для Chrome на мобильном
+      if (typeof window !== 'undefined' && window.navigator && window.navigator.userAgent) {
+        const isChromeMobile = /Chrome/.test(window.navigator.userAgent) && /Mobile/.test(window.navigator.userAgent);
+        if (isChromeMobile) {
+          console.log('Chrome mobile detected, using enhanced error handling');
+          // Очищаем кэш для Chrome на мобильном
+          this.clearCache();
+        }
+      }
+      
+      return this.request('/api/auth/send-code', {
+        method: 'POST',
+        body: JSON.stringify({ login }),
+      });
+    } catch (error) {
+      // Специальная обработка для Chrome на мобильном
+      if (error.message && error.message.includes('Network error')) {
+        console.error('Chrome mobile network error:', error);
+        // Попробуем повторить запрос с задержкой
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        return this.request('/api/auth/send-code', {
+          method: 'POST',
+          body: JSON.stringify({ login }),
+        });
+      }
+      throw error;
+    }
   }
 
   // Verify authentication code
@@ -417,10 +454,10 @@ class ApiService {
     return this.throttledRequest(endpoint);
   }
 
-  // Получить сотрудников
-  async getEmployees() {
-    return this.request('/employees');
-  }
+  // Получить сотрудников (дублирующий метод - удаляем)
+  // async getEmployees() {
+  //   return this.request('/employees');
+  // }
 
   // Получить сотрудников для Telegram мини-приложения (без авторизации)
   async getEmployeesForTelegram() {
