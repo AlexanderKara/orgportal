@@ -74,3 +74,7 @@ fi
 echo "✅ Деплой завершен успешно!"
 echo "🌐 Фронтенд доступен на: http://localhost:3000"
 echo "🔧 Бэкенд доступен на: http://localhost:3001" 
+
+# Копируем production-сборку фронта в папку веб-сервера
+cp -r /root/orgportal/orgchart/frontend/dist/* /var/www/a-team.moscow/
+chown -R www-data:www-data /var/www/a-team.moscow/
