@@ -244,7 +244,7 @@ const TokenCard = ({ token, onClick, isFlipped = false, isModal = false, size = 
             {size === 'large' ? (
               token.image && token.image !== '🎯' && (token.image.startsWith('http') || token.image.startsWith('/uploads/')) ? (
                 <img 
-                  src={token.image.startsWith('http') ? token.image : `http://localhost:5000${token.image}`}
+                  src={token.image.startsWith('http') ? token.image : `${token.image}`}
                   alt="" 
                   className="m-8 border-2 border-white/80 rounded-[12px] object-contain bg-white/70 w-[calc(100%-4rem)] h-[calc(100%-4rem)]"
                   onError={(e) => {
@@ -259,7 +259,7 @@ const TokenCard = ({ token, onClick, isFlipped = false, isModal = false, size = 
             ) : (
               token.image && token.image !== '🎯' && (token.image.startsWith('http') || token.image.startsWith('/uploads/')) ? (
                 <img 
-                  src={token.image.startsWith('http') ? token.image : `http://localhost:5000${token.image}`}
+                  src={token.image.startsWith('http') ? token.image : `${token.image}`}
                   alt="" 
                   className="m-4 border-2 border-white/80 rounded-[12px] object-contain bg-white/70 w-[calc(100%-2rem)] h-[calc(100%-2rem)]"
                   onError={(e) => {

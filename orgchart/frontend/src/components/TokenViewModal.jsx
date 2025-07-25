@@ -317,7 +317,7 @@ export default function TokenViewModal({
             {/* Только изображение токена, занимающее всю площадь */}
             {token.image && token.image !== '🎯' && (token.image.startsWith('http') || token.image.startsWith('/uploads/')) ? (
               <img 
-                src={token.image.startsWith('http') ? token.image : `http://localhost:5000${token.image}`}
+                src={token.image.startsWith('http') ? token.image : `${token.image}`}
                 alt="" 
                                             className="m-12 border-2 border-white/80 rounded-[16px] object-contain bg-white/70 w-[calc(100%-4rem)] h-[calc(100%-4rem)]"
                 onError={(e) => {

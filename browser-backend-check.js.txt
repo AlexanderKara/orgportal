@@ -1,0 +1,12 @@
+fetch('https://a-team.moscow/api/auth/send-code', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ login: 'testuser' })
+})
+  .then(async res => {
+    let data;
+    try { data = await res.json(); } catch { data = await res.text(); }
+    return { status: res.status, data };
+  })
+  .then(console.log)
+  .catch(console.error); 

@@ -642,7 +642,7 @@ export default function RatingSystem() {
                       <div className="rounded-lg mb-3 flex flex-col items-center text-2xl text-white" style={{ width: '320px', height: '452px', aspectRatio: '1/1.414', background: typeInfo.color.background }}>
                         {token.image && token.image !== '🎯' && (token.image.startsWith('http') || token.image.startsWith('/uploads/')) ? (
                           <img 
-                            src={token.image.startsWith('http') ? token.image : `http://localhost:5000${token.image}`}
+                            src={token.image.startsWith('http') ? token.image : `${token.image}`}
                             alt="" 
                             style={{ 
                               margin: '2rem',
@@ -832,7 +832,7 @@ export default function RatingSystem() {
                             <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: typeInfo.color.background }}>
                               {token.image && token.image !== '🎯' && (token.image.startsWith('http') || token.image.startsWith('/uploads/')) ? (
                                 <img 
-                                  src={token.image.startsWith('http') ? token.image : `http://localhost:5000${token.image}`}
+                                  src={token.image.startsWith('http') ? token.image : `${token.image}`}
                                   alt="" 
                                   className="w-6 h-6 object-contain"
                                   onError={(e) => {
@@ -1041,7 +1041,7 @@ export default function RatingSystem() {
                             <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: typeInfo.color.background }}>
                               {token.tokenType?.image && token.tokenType.image !== '🎯' && (token.tokenType.image.startsWith('http') || token.tokenType.image.startsWith('/uploads/')) ? (
                                 <img 
-                                  src={token.tokenType.image.startsWith('http') ? token.tokenType.image : `http://localhost:5000${token.tokenType.image}`}
+                                  src={token.tokenType.image.startsWith('http') ? token.tokenType.image : `${token.tokenType.image}`}
                                   alt="" 
                                   className="w-6 h-6 object-contain"
                                   onError={(e) => {

@@ -267,7 +267,7 @@ export default function PrintTokenModal({ isOpen, onClose, token }) {
               <div class="token-card token-front">
                 <div class="token-image">
                   ${token.image && token.image !== '🎯' ? 
-                    `<img src="${token.image.startsWith('http') ? token.image : `http://localhost:5000${token.image}`}" 
+                    `<img src="${token.image.startsWith('http') ? token.image : `${token.image}`}" 
                           style="width: 100%; height: 100%; object-fit: contain;" 
                           onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                      <div style="display: none; width: 100%; height: 100%; align-items: center; justify-content: center; font-size: 10rem;">
@@ -384,7 +384,7 @@ export default function PrintTokenModal({ isOpen, onClose, token }) {
                   >
                     {token.image && token.image !== '🎯' && (token.image.startsWith('http') || token.image.startsWith('/uploads/')) ? (
                       <img 
-                        src={token.image.startsWith('http') ? token.image : `http://localhost:5000${token.image}`}
+                        src={token.image.startsWith('http') ? token.image : `${token.image}`}
                         alt="Token preview" 
                         style={{ 
                           margin: `${getScaledSize(2)}rem`,

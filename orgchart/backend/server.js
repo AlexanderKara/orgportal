@@ -3,7 +3,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
 const morgan = require('morgan');
-const rateLimit = require('express-rate-limit');
+// const rateLimit = require('express-rate-limit');
 const path = require('path');
 const fs = require('fs');
 require('dotenv').config();
@@ -44,6 +44,9 @@ const tokenDistributionService = require('./services/tokenDistributionService');
 
 const app = express();
 
+// Trust proxy for rate limiting behind Nginx
+app.set('trust proxy', true);
+
 // Database connection
 let dbConnected = false;
 
@@ -65,6 +68,12 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(performanceMiddleware);
 app.use(dbPerformanceMiddleware);
+
+// Логирование всех входящих запросов
+app.use((req, res, next) => {
+  console.log('INCOMING:', req.method, req.url);
+  next();
+});
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" },
   contentSecurityPolicy: {
@@ -82,7 +91,7 @@ app.use(compression());
 // CORS configuration
 const corsOrigins = process.env.CORS_ORIGIN 
   ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
-  : ['http://localhost:3000', 'http://localhost:5173'];
+  : ['http://localhost:3000', 'http://localhost:5173', 'https://a-team.moscow', 'https://www.a-team.moscow'];
 
 app.use(cors({
   origin: (origin, callback) => {
@@ -93,6 +102,7 @@ app.use(cors({
     if (corsOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
+      console.log('CORS blocked origin:', origin);
       callback(new Error('Not allowed by CORS'));
     }
   },
@@ -101,33 +111,35 @@ app.use(cors({
 }));
 
 // Rate limiting - более мягкие настройки для auth endpoints
-const authLimiter = rateLimit({
-  windowMs: 1 * 60 * 1000, // 1 минута
-  max: 60, // Увеличиваем до 60 запросов в минуту для auth
-  message: 'Too many authentication requests, please try again later.'
-});
+// const authLimiter = rateLimit({
+//   windowMs: 1 * 60 * 1000, // 1 минута
+//   max: 60, // Увеличиваем до 60 запросов в минуту для auth
+//   message: 'Too many authentication requests, please try again later.'
+// });
 
-const generalLimiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 1000, // Увеличиваем лимит
-  message: 'Too many requests from this IP, please try again later.'
-});
+// const generalLimiter = rateLimit({
+//   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
+//   max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 1000, // Увеличиваем лимит
+//   message: 'Too many requests from this IP, please try again later.'
+// });
 
-const bulkImportLimiter = rateLimit({
-  windowMs: 1 * 60 * 1000, // 1 минута
-  max: 1000, // Очень высокий лимит для bulk операций
-  message: 'Too many bulk operations, please try again later.'
-});
+// const bulkImportLimiter = rateLimit({
+//   windowMs: 1 * 60 * 1000, // 1 минута
+//   max: 1000, // Очень высокий лимит для bulk операций
+//   message: 'Too many bulk operations, please try again later.'
+// });
 
 // Применяем разные лимиты для разных endpoints
-app.use('/api/auth', authLimiter);
-app.use('/api/employees', bulkImportLimiter); // Специальный лимит для employees
+// Временно отключаем rate limiting для тестирования
+// app.use('/api/auth', authLimiter);
+// app.use('/api/employees', bulkImportLimiter); // Специальный лимит для employees
 
 // В режиме разработки отключаем лимиты для API
 if (process.env.NODE_ENV === 'development') {
   console.log('Development mode: rate limiting disabled for API endpoints');
 } else {
-  app.use('/api/', generalLimiter);
+  // app.use('/api/', generalLimiter);
+  console.log('Production mode: rate limiting temporarily disabled for testing');
 }
 
 app.use(express.json({ limit: '10mb' }));

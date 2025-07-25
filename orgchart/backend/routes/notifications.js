@@ -88,7 +88,7 @@ router.post('/token-received', async (req, res) => {
       message,
       tokenData.image ? {
         type: 'image',
-        url: tokenData.image.startsWith('http') ? tokenData.image : `${process.env.BACKEND_URL || 'http://localhost:5000'}${tokenData.image}`
+        url: tokenData.image.startsWith('http') ? tokenData.image : `${process.env.BACKEND_URL || 'http://localhost:3001'}${tokenData.image}`
       } : null
     );
 
