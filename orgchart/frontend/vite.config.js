@@ -22,11 +22,19 @@ export default defineConfig({
     outDir: 'dist',
     assetsDir: 'assets',
     sourcemap: false,
+    chunkSizeWarningLimit: 1000, // Увеличиваем лимит до 1MB
     rollupOptions: {
       output: {
         manualChunks: {
+          // Основные библиотеки
           vendor: ['react', 'react-dom'],
           router: ['react-router-dom'],
+          // UI библиотеки
+          ui: ['lucide-react', 'react-icons'],
+          // Утилиты и графики
+          utils: ['d3', 'qrcode', 'react-select'],
+          // Частицы
+          particles: ['react-tsparticles', 'tsparticles'],
         },
       },
     },

@@ -54,6 +54,11 @@ const Employee = sequelize.define('Employee', {
     allowNull: true,
     comment: 'ID чата Telegram бота с сотрудником'
   },
+  telegram_id: {
+    type: DataTypes.BIGINT,
+    allowNull: true,
+    comment: 'ID пользователя в Telegram для авторизации'
+  },
   birth_date: {
     type: DataTypes.DATE,
     allowNull: true,

@@ -94,6 +94,53 @@ body {
   background: #fff;
 }
 
+/* Flip card styles */
+.flip-card {
+  perspective: 1000px;
+  height: 500px;
+}
+
+.flip-card-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  text-align: center;
+  transition: transform 0.7s;
+  transform-style: preserve-3d;
+}
+
+.flip-card-front,
+.flip-card-back {
+  position: absolute;
+  width: 100%;
+  height: 500px;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  cursor: pointer;
+}
+
+.flip-card-back {
+  transform: rotateY(180deg);
+}
+
+/* Mobile-specific flip card styles */
+@media (max-width: 768px) {
+  .flip-card {
+    perspective: 800px;
+    height: 600px;
+  }
+  
+  .flip-card-inner {
+    transition: transform 0.6s;
+    height: 600px;
+  }
+  
+  .flip-card-front,
+  .flip-card-back {
+    height: 600px;
+  }
+}
+
 .btn-no-before-after::before,
 .btn-no-before-after::after {
   border: none !important;

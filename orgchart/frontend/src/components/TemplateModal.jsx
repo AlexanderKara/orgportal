@@ -59,6 +59,19 @@ export default function TemplateModal({
               />
             </div>
 
+            <div className="flex items-center gap-2 mb-4">
+              <input
+                type="checkbox"
+                id="generate-graphic-header"
+                checked={!!formData.generateGraphicHeader}
+                onChange={e => setFormData({ ...formData, generateGraphicHeader: e.target.checked })}
+                className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+              />
+              <label htmlFor="generate-graphic-header" className="text-sm font-medium text-gray-700">
+                Генерировать графический заголовок
+              </label>
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Содержание шаблона *

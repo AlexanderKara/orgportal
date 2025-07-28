@@ -37,7 +37,13 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: false,
       get() {
         const rawValue = this.getDataValue('criteria');
-        return rawValue ? JSON.parse(rawValue) : {};
+        if (!rawValue) return {};
+        try {
+          return JSON.parse(rawValue);
+        } catch (error) {
+          console.error('Error parsing criteria JSON:', error);
+          return {};
+        }
       },
       set(value) {
         this.setDataValue('criteria', JSON.stringify(value));
@@ -47,6 +53,30 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: true
+    },
+    image: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      comment: 'Путь к изображению бейджа',
+      get() {
+        const rawValue = this.getDataValue('image');
+        return rawValue || null;
+      },
+      set(value) {
+        this.setDataValue('image', value || null);
+      }
+    },
+    is_random: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+      comment: 'Использовать случайное изображение из папки'
+    },
+    is_unique: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+      comment: 'Уникальный бейдж (назначается вручную)'
     }
   }, {
     sequelize,

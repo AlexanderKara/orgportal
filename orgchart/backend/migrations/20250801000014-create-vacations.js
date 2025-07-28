@@ -2,6 +2,13 @@
 
 module.exports = {
   async up(queryInterface, Sequelize) {
+    // Проверяем, существует ли таблица
+    const tables = await queryInterface.showAllTables();
+    if (tables.includes('vacations')) {
+      console.log('Table vacations already exists, skipping creation');
+      return;
+    }
+
     await queryInterface.createTable('vacations', {
       id: { type: Sequelize.INTEGER, primaryKey: true, autoIncrement: true },
       employee_id: { type: Sequelize.INTEGER, allowNull: false, references: { model: 'employees', key: 'id' } },
@@ -13,9 +20,25 @@ module.exports = {
       createdAt: { type: Sequelize.DATE, allowNull: false, defaultValue: Sequelize.literal('CURRENT_TIMESTAMP') },
       updatedAt: { type: Sequelize.DATE, allowNull: false, defaultValue: Sequelize.literal('CURRENT_TIMESTAMP') }
     });
-    await queryInterface.addIndex('vacations', ['employee_id']);
-    await queryInterface.addIndex('vacations', ['start_date']);
-    await queryInterface.addIndex('vacations', ['end_date']);
+
+    // Добавляем индексы с обработкой ошибок
+    try {
+      await queryInterface.addIndex('vacations', ['employee_id']);
+    } catch (error) {
+      console.log('Index vacations_employee_id already exists');
+    }
+
+    try {
+      await queryInterface.addIndex('vacations', ['start_date']);
+    } catch (error) {
+      console.log('Index vacations_start_date already exists');
+    }
+
+    try {
+      await queryInterface.addIndex('vacations', ['end_date']);
+    } catch (error) {
+      console.log('Index vacations_end_date already exists');
+    }
   },
   async down(queryInterface, Sequelize) {
     await queryInterface.dropTable('vacations');

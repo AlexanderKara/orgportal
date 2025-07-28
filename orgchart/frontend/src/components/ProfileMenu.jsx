@@ -5,6 +5,7 @@ import { useRole } from './RoleProvider';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 import Avatar from './ui/Avatar';
+import ReactDOM from 'react-dom';
 
 const themes = [
   { id: 'light', label: 'Светлая' },
@@ -101,19 +102,26 @@ export default function ProfileMenu() {
   // Проверяем, есть ли у пользователя роли
   const hasRoles = availableRoles.length > 0;
 
+  // Обработчик клика вне меню
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
-        setOpen(false);
+        // Проверяем, что клик не был на элементе дропдауна
+        const dropdownElement = document.querySelector('.profile-dropdown');
+        if (dropdownElement && !dropdownElement.contains(event.target)) {
+          setOpen(false);
+        }
       }
     };
 
     if (open) {
       document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
     };
   }, [open]);
 
@@ -149,7 +157,7 @@ export default function ProfileMenu() {
   }
 
   return (
-    <div className="relative" ref={menuRef}>
+    <div className="relative" ref={menuRef} style={{ position: 'relative', zIndex: 999999 }}>
       <button
         className={`flex items-center gap-3 py-[0.3rem] pl-[0.3rem] pr-2 lg:pr-4 rounded-[25px] min-w-[50px] lg:min-w-[180px] transition select-none group ${
           isProfilePage 
@@ -192,8 +200,14 @@ export default function ProfileMenu() {
           isProfilePage ? 'text-white' : 'text-gray-500'
         }`} />
       </button>
-      {open && (
-        <div className="absolute right-0 mt-2 w-56 md:w-56 w-48 bg-white rounded-[15px] shadow-lg py-2 z-30 p-2">
+      {open && ReactDOM.createPortal(
+        <div 
+          className="fixed bg-white rounded-[15px] shadow-lg py-2 z-[999999] p-2 w-56 md:w-56 w-48 profile-dropdown"
+          style={{
+            top: menuRef.current ? menuRef.current.getBoundingClientRect().bottom + 8 : 0,
+            right: menuRef.current ? window.innerWidth - menuRef.current.getBoundingClientRect().right : 0,
+          }}
+        >
           <Link
             to="/account/profile"
             className={`w-full text-left px-4 py-2 text-sm rounded-none flex items-center ${
@@ -289,7 +303,8 @@ export default function ProfileMenu() {
           >
             Выйти
           </button>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

@@ -2,6 +2,13 @@
 
 module.exports = {
   async up(queryInterface, Sequelize) {
+    // Проверяем, существует ли таблица
+    const tables = await queryInterface.showAllTables();
+    if (tables.includes('token_distributions')) {
+      console.log('Table token_distributions already exists, skipping creation');
+      return;
+    }
+
     await queryInterface.createTable('token_distributions', {
       id: { type: Sequelize.INTEGER, primaryKey: true, autoIncrement: true },
       tokenTypeId: { type: Sequelize.INTEGER, allowNull: false, references: { model: 'token_types', key: 'id' } },
@@ -23,9 +30,25 @@ module.exports = {
       createdAt: { type: Sequelize.DATE, allowNull: false, defaultValue: Sequelize.literal('CURRENT_TIMESTAMP') },
       updatedAt: { type: Sequelize.DATE, allowNull: false, defaultValue: Sequelize.literal('CURRENT_TIMESTAMP') }
     });
-    await queryInterface.addIndex('token_distributions', ['tokenTypeId']);
-    await queryInterface.addIndex('token_distributions', ['status']);
-    await queryInterface.addIndex('token_distributions', ['scheduledDate']);
+
+    // Добавляем индексы с обработкой ошибок
+    try {
+      await queryInterface.addIndex('token_distributions', ['tokenTypeId']);
+    } catch (error) {
+      console.log('Index token_distributions_tokenTypeId already exists');
+    }
+
+    try {
+      await queryInterface.addIndex('token_distributions', ['status']);
+    } catch (error) {
+      console.log('Index token_distributions_status already exists');
+    }
+
+    try {
+      await queryInterface.addIndex('token_distributions', ['scheduledDate']);
+    } catch (error) {
+      console.log('Index token_distributions_scheduledDate already exists');
+    }
   },
   async down(queryInterface, Sequelize) {
     await queryInterface.dropTable('token_distributions');

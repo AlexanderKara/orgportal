@@ -59,7 +59,7 @@ router.put('/', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'Должен быть выбран хотя бы один рабочий день' });
     }
 
-    if (notificationOnError && !notificationEmail) {
+    if (notificationOnError && (!notificationEmail || notificationEmail.trim() === '')) {
       return res.status(400).json({ error: 'Email для уведомлений обязателен при включенных уведомлениях' });
     }
 

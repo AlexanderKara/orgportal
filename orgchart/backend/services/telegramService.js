@@ -66,7 +66,7 @@ const sendAuthCode = async (telegram, code) => {
       } catch (usernameError) {
         // Try to send a helpful message to the user
         try {
-          const helpMessage = `🤖 Настройка бота авторизации
+          const helpMessage = `🤖 Привязка бота
 
 Привет! Я бот для авторизации в системе Team-A.
 

@@ -201,7 +201,8 @@ class ApiService {
           status: response.status,
           statusText: response.statusText,
           url: url,
-          data: errorData
+          data: errorData,
+          headers: Object.fromEntries(response.headers.entries())
         });
         
         const error = new Error(errorMessage);
@@ -403,6 +404,14 @@ class ApiService {
     });
   }
 
+  // Confirm authentication code (for Telegram mini-app)
+  async confirmCode(code) {
+    return this.request('/api/auth/confirm-code', {
+      method: 'POST',
+      body: JSON.stringify({ code }),
+    });
+  }
+
   // Get current user profile
   async getMe() {
     // Увеличиваем время кэширования для профиля до 5 минут
@@ -462,6 +471,11 @@ class ApiService {
   // Получить сотрудников для Telegram мини-приложения (без авторизации)
   async getEmployeesForTelegram() {
     return this.request('/employees/telegram-miniapp');
+  }
+
+  // Найти сотрудника по Telegram ID
+  async findEmployeeByTelegramId(telegramId) {
+    return this.request(`/employees/telegram-id/${telegramId}`);
   }
 
   async getEmployee(id) {
@@ -1149,6 +1163,59 @@ class ApiService {
   async getPlannedTokenDistributions({ page = 1, limit = 10 } = {}) {
     // Пока нет отдельного эндпоинта, возвращаем пустой массив
     return { success: true, data: [], pagination: { page, limit, total: 0, pages: 1 } };
+  }
+
+  // Achievement methods
+  async getAchievements() {
+    return this.throttledRequest('/api/achievements');
+  }
+
+  async getAchievementById(id) {
+    return this.request(`/api/achievements/${id}`);
+  }
+
+  async createAchievement(data) {
+    return this.request('/api/achievements', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateAchievement(id, data) {
+    return this.request(`/api/achievements/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteAchievement(id) {
+    return this.request(`/api/achievements/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getEmployeeAchievements(employeeId) {
+    return this.request(`/api/achievements/employee/${employeeId}`);
+  }
+
+  async assignAchievementToEmployee(data) {
+    return this.request('/api/achievements/assign', 'POST', data);
+  }
+
+  async removeAchievementFromEmployee(employeeId, achievementId) {
+    return this.request(`/api/achievements/employee/${employeeId}/achievement/${achievementId}`, 'DELETE');
+  }
+
+  async getBadgeImages() {
+    return this.throttledRequest('/api/achievements/images/list');
+  }
+
+  async getTokenTypes() {
+    return this.throttledRequest('/api/admin/token-types');
+  }
+
+  async checkAndAssignAchievements() {
+    return this.throttledRequest('/api/achievements/check-and-assign');
   }
 }
 

@@ -12,8 +12,22 @@ module.exports = {
       createdAt: { type: Sequelize.DATE, allowNull: false, defaultValue: Sequelize.literal('CURRENT_TIMESTAMP') },
       updatedAt: { type: Sequelize.DATE, allowNull: false, defaultValue: Sequelize.literal('CURRENT_TIMESTAMP') }
     });
-    await queryInterface.addIndex('skill_groups', ['name']);
-    await queryInterface.addIndex('skill_groups', ['skill_type']);
+    
+    // Функция для безопасного добавления индекса
+    const addIndexIfNotExists = async (tableName, columns, options) => {
+      try {
+        await queryInterface.addIndex(tableName, columns, options);
+      } catch (error) {
+        if (error.message.includes('Duplicate key name')) {
+          console.log(`Index already exists, skipping...`);
+        } else {
+          throw error;
+        }
+      }
+    };
+    
+    await addIndexIfNotExists('skill_groups', ['name']);
+    await addIndexIfNotExists('skill_groups', ['skill_type']);
   },
   async down(queryInterface, Sequelize) {
     await queryInterface.dropTable('skill_groups');

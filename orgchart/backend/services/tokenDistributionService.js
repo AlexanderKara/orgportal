@@ -1,6 +1,20 @@
 const { Op } = require('sequelize');
 const moment = require('moment-timezone');
 
+// Импортируем модели
+let TokenType, TokenDistribution, Employee, EmployeeToken, DistributionSettings;
+
+try {
+  const models = require('../models');
+  TokenType = models.TokenType;
+  TokenDistribution = models.TokenDistribution;
+  Employee = models.Employee;
+  EmployeeToken = models.EmployeeToken;
+  DistributionSettings = models.DistributionSettings;
+} catch (error) {
+  console.error('Ошибка импорта моделей:', error);
+}
+
 class TokenDistributionService {
   constructor() {
     this.isRunning = false;
@@ -9,7 +23,6 @@ class TokenDistributionService {
 
   // Получает настройки сервиса
   async getSettings() {
-    const { DistributionSettings } = require('../models');
     let settings = await DistributionSettings.findOne();
     if (!settings) {
       // Создаем настройки по умолчанию
@@ -20,7 +33,6 @@ class TokenDistributionService {
 
   // Проверяет рабочий ли день
   async isWorkingDay(date, settings) {
-    const { DistributionSettings } = require('../models');
     const momentDate = moment.tz(date, settings.timezone);
     const dayOfWeek = momentDate.day(); // 0 = воскресенье, 1 = понедельник
     const dayOfWeekISO = dayOfWeek === 0 ? 7 : dayOfWeek; // Преобразуем в ISO формат
@@ -94,7 +106,6 @@ class TokenDistributionService {
 
   // Создает плановые распределения для всех активных типов токенов
   async createScheduledDistributions() {
-    const { TokenType, TokenDistribution } = require('../models');
     const settings = await this.getSettings();
     if (!settings.serviceEnabled) {
       return;
@@ -155,7 +166,6 @@ class TokenDistributionService {
 
   // Проверяет готовые к выполнению распределения
   async getReadyDistributions() {
-    const { TokenDistribution } = require('../models');
     const settings = await this.getSettings();
     const now = moment.tz(settings.timezone);
 
@@ -184,20 +194,17 @@ class TokenDistributionService {
 
     try {
       // Обновляем статус
-      const { TokenDistribution } = require('../models');
       await distribution.update({
         status: 'in_progress',
         executedDate: new Date()
       });
 
-      const { TokenType } = require('../models');
       const tokenType = await TokenType.findByPk(distribution.tokenTypeId);
       if (!tokenType || !tokenType.autoDistribution) {
         throw new Error('Тип токенов не найден или отключен');
       }
 
       // Получаем всех активных сотрудников
-      const { Employee } = require('../models');
       const employees = await Employee.findAll({
         where: {
           // Добавьте условия для активных сотрудников
@@ -225,7 +232,6 @@ class TokenDistributionService {
         for (const employee of batch) {
           try {
             // Проверяем существующие токены
-            const { EmployeeToken } = require('../models');
             let employeeToken = await EmployeeToken.findOne({
               where: {
                 employeeId: employee.id,
@@ -420,7 +426,6 @@ class TokenDistributionService {
 
   // Получение статистики
   async getStatistics(limit = 50) {
-    const { TokenDistribution, TokenType } = require('../models');
     const scheduled = await TokenDistribution.findAll({
       where: { status: 'scheduled' },
       include: [{ 
@@ -468,7 +473,6 @@ class TokenDistributionService {
 
   // Ручной запуск распределения
   async manualDistribution(tokenTypeId) {
-    const { TokenType, TokenDistribution } = require('../models');
     const settings = await this.getSettings();
     const tokenType = await TokenType.findByPk(tokenTypeId);
 
@@ -492,8 +496,6 @@ class TokenDistributionService {
   // Добавить тип токена в активное автоматическое распределение
   async addActiveTokenType(tokenTypeId) {
     try {
-      const { TokenType } = require('../models');
-      
       const tokenType = await TokenType.findByPk(tokenTypeId);
       if (!tokenType) {
         throw new Error('Тип токена не найден');
@@ -519,8 +521,6 @@ class TokenDistributionService {
   // Удалить тип токена из активного автоматического распределения
   async removeActiveTokenType(tokenTypeId) {
     try {
-      const { TokenType, TokenDistribution } = require('../models');
-      
       const tokenType = await TokenType.findByPk(tokenTypeId);
       if (!tokenType) {
         throw new Error('Тип токена не найден');

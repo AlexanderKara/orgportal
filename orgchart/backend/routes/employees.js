@@ -901,6 +901,56 @@ router.get('/telegram-miniapp', async (req, res) => {
   }
 });
 
+// Найти сотрудника по Telegram ID
+router.get('/telegram-id/:telegramId', async (req, res) => {
+  try {
+    const { telegramId } = req.params;
+    
+    const employee = await Employee.findOne({
+      where: { 
+        telegram_id: telegramId,
+        isActive: true
+      },
+      include: [
+        {
+          model: Department,
+          as: 'department',
+          attributes: ['id', 'name']
+        }
+      ],
+      attributes: ['id', 'first_name', 'last_name', 'position', 'department_id', 'telegram_id']
+    });
+
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: 'Сотрудник не найден'
+      });
+    }
+
+    res.json({
+      success: true,
+      employee: {
+        id: employee.id,
+        first_name: employee.first_name,
+        last_name: employee.last_name,
+        position: employee.position,
+        telegram_id: employee.telegram_id,
+        department: employee.department ? {
+          id: employee.department.id,
+          name: employee.department.name
+        } : null
+      }
+    });
+  } catch (error) {
+    console.error('Error finding employee by Telegram ID:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Ошибка поиска сотрудника'
+    });
+  }
+});
+
 router.get('/stats', authMiddleware, adminMiddleware, getEmployeeStats);
 router.get('/:id', authMiddleware, adminMiddleware, getEmployee);
 router.post('/', authMiddleware, adminMiddleware, [

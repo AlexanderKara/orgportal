@@ -39,6 +39,11 @@ module.exports = (sequelize, DataTypes) => {
     year: {
       type: DataTypes.INTEGER,
       allowNull: false
+    },
+    image: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      comment: 'Путь к изображению бейджа для конкретного сотрудника'
     }
   }, {
     sequelize,

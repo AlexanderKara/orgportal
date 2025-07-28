@@ -31,7 +31,13 @@ export default function NotFound() {
         {/* Кнопки действий */}
         <div className="space-y-3">
           <button
-            onClick={() => window.history.back()}
+            onClick={() => {
+              if (window.history.length > 1) {
+                window.history.back();
+              } else {
+                window.location.href = '/';
+              }
+            }}
             className="w-full flex items-center justify-center gap-2 bg-primary text-white py-3 px-6 rounded-lg hover:bg-primary/90 transition-colors font-medium"
           >
             <ArrowLeft className="w-4 h-4" />

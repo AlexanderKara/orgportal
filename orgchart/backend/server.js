@@ -31,6 +31,8 @@ const tokenRoutes = require('./routes/tokens');
 const adminTokenRoutes = require('./routes/adminTokens');
 const ratingRoutes = require('./routes/ratings');
 const distributionSettingsRoutes = require('./routes/distributionSettings');
+const logsRoutes = require('./routes/logs');
+const achievementRoutes = require('./routes/achievements');
 
 // Import middleware
 const { errorHandler } = require('./middleware/errorHandler');
@@ -298,6 +300,7 @@ app.use('/api/templates', authMiddleware, templateRoutes);
 app.use('/api/notification-chats', authMiddleware, notificationChatRoutes);
 app.use('/api/notification-service', authMiddleware, notificationServiceRoutes);
 app.use('/api/telegram', authMiddleware, telegramRoutes);
+app.use('/api/achievements', achievementRoutes);
 // Public token image routes (no authentication required)
 app.get('/api/tokens/images/folders', (req, res) => {
   try {
@@ -502,6 +505,7 @@ app.use('/api/tokens', tokenRoutes);
 app.use('/api/admin/tokens', authMiddleware, adminTokenRoutes);
 app.use('/api/ratings', authMiddleware, ratingRoutes);
 app.use('/api/distribution-settings', authMiddleware, distributionSettingsRoutes);
+app.use('/api/logs', logsRoutes);
 
 app.use('*', (req, res) => {
   res.status(404).json({ message: 'Route not found' });
@@ -509,7 +513,7 @@ app.use('*', (req, res) => {
 
 app.use(errorHandler);
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 
 const startServer = async () => {
   try {
@@ -530,8 +534,8 @@ const startServer = async () => {
       console.log('Notification service started');
       
       // Запускаем планировщик автоматического распределения токенов
-      tokenDistributionService.startScheduler();
-      console.log('Token distribution scheduler started');
+      // tokenDistributionService.startScheduler();
+      // console.log('Token distribution scheduler started');
     });
   } catch (error) {
     console.error('Critical error during server startup:', error);

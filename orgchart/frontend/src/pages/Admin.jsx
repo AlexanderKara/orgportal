@@ -158,13 +158,13 @@ export default function Admin() {
       color: 'text-orange-600',
       bgColor: 'bg-orange-500/10',
       items: [
-        { label: 'Уведомления', to: '/admin/notifications', icon: <Bell className="w-4 h-4" /> },
-        { label: 'Шаблоны', to: '/admin/templates', icon: <MessageSquare className="w-4 h-4" /> },
-        { label: 'Получатели', to: '/admin/notification-settings', icon: <Cog className="w-4 h-4" /> },
+        { label: 'Управление уведомлениями', to: '/admin/notifications', icon: <Bell className="w-4 h-4" /> },
+        { label: 'Шаблоны уведомлений', to: '/admin/templates', icon: <MessageSquare className="w-4 h-4" /> },
+        { label: 'Управление получателями', to: '/admin/notification-settings', icon: <Cog className="w-4 h-4" /> },
         {
           label: (
             <span className="flex items-center gap-2">
-              Сервис
+              Сервис уведомлений
               <span
                 className={
                   'inline-block w-2 h-2 rounded-full ' +
@@ -195,12 +195,13 @@ export default function Admin() {
       color: 'text-yellow-600',
       bgColor: 'bg-yellow-500/10',
       items: [
-        { label: 'Настройки токенов', to: '/admin/rating-settings', icon: <Cog className="w-4 h-4" /> },
+        { label: 'Управление токенами', to: '/admin/rating-settings', icon: <Cog className="w-4 h-4" /> },
+        { label: 'Управление бейджами', to: '/admin/achievements', icon: <Award className="w-4 h-4" /> },
         { label: 'Настройки рассылки', to: '/admin/distribution-settings', icon: <Settings className="w-4 h-4" /> },
         {
           label: (
             <span className="flex items-center gap-2">
-              Сервис рассылки
+              Сервис рассылки токенов
               <span
                 className={
                   'inline-block w-2 h-2 rounded-full ' +

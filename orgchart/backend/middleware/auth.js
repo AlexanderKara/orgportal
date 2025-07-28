@@ -10,6 +10,7 @@ const authMiddleware = async (req, res, next) => {
     }
     
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret');
+    
     const employee = await Employee.findByPk(decoded.id, {
       include: [{
         model: require('../models').Role,
@@ -32,6 +33,7 @@ const authMiddleware = async (req, res, next) => {
     req.employee = employeeWithoutPassword;
     next();
   } catch (error) {
+    console.error('Auth middleware error:', error);
     if (error.name === 'JsonWebTokenError') {
       return res.status(401).json({ message: 'Invalid token.' });
     }

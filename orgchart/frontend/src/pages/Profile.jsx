@@ -33,7 +33,19 @@ import {
   Trophy,
   Info,
   Trash2,
-  Check
+  Check,
+  Award,
+  Crown,
+  Star,
+  Heart,
+  Users,
+  Zap,
+  ChevronLeft,
+  ChevronRight,
+  Medal,
+  Gem,
+  Target,
+  Shield
 } from 'lucide-react';
 import { showNotification } from '../utils/notifications';
 import RatingWidget from '../components/RatingWidget';
@@ -41,6 +53,7 @@ import TokenCard, { TokenStack } from '../components/TokenCard';
 import TokenViewModal from '../components/TokenViewModal';
 import TokenStackModal from '../components/TokenStackModal';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { getProportionalPadding } from '../utils/padding';
 
 const viewOptions = [
   { id: 'profile', label: 'Профиль', icon: <User className="w-4 h-4" /> },
@@ -75,6 +88,7 @@ export default function Profile() {
   const [tokensLoading, setTokensLoading] = useState(false);
   const [selectedToken, setSelectedToken] = useState(null);
   const [showTokenModal, setShowTokenModal] = useState(false);
+  const [userAchievements, setUserAchievements] = useState([]);
   const [showVacationModal, setShowVacationModal] = useState(false);
   const [vacations, setVacations] = useState([]);
   const [vacationsLoading, setVacationsLoading] = useState(false);
@@ -195,6 +209,15 @@ export default function Profile() {
           setVacations([]);
         } finally {
           setVacationsLoading(false);
+        }
+
+        // Загружаем бейджи пользователя
+        try {
+          const achievementsResponse = await api.getEmployeeAchievements(employeeData.id);
+          setUserAchievements(achievementsResponse.achievements || []);
+        } catch (achievementError) {
+          console.error('Error loading achievements:', achievementError);
+          setUserAchievements([]);
         }
       } catch (error) {
         console.error('Error loading user profile:', error);
@@ -1259,7 +1282,7 @@ export default function Profile() {
 
       {activeView === 'rating' && (
         <div>
-          {/* Текущий уровень */}
+          {/* Бейджи */}
           <div className="bg-white rounded-lg p-6 border border-gray/20 mb-8">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold text-gray-900">Мой рейтинг</h2>
@@ -1270,6 +1293,64 @@ export default function Profile() {
             </div>
             
             <p className="text-gray-600 mb-4">Начинающий сотрудник</p>
+            
+            {/* Бейджи в одну строку */}
+            <div className="mb-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Мои бейджи</h3>
+              <div className="flex flex-wrap gap-4">
+                {userAchievements.map((employeeAchievement) => {
+                  const achievement = employeeAchievement.achievement;
+                  return (
+                    <div
+                      key={employeeAchievement.id}
+                      className="relative group"
+                      title={achievement.description}
+                    >
+                      {/* Иконка уникальности */}
+                      {achievement.is_unique && (
+                        <div className="absolute -top-2 -right-2 z-10">
+                          <Crown className="w-5 h-5 text-yellow-500" />
+                        </div>
+                      )}
+                      
+                      {/* Бейдж */}
+                      <div className="w-16 h-16 relative">
+                        {employeeAchievement.image ? (
+                          <img
+                            src={employeeAchievement.image}
+                            alt={achievement.name}
+                            className="w-full h-full object-cover rounded-full"
+                            style={{ padding: `${getProportionalPadding(64)}px` }}
+                          />
+                        ) : (
+                          <div
+                            className="w-full h-full rounded-full flex items-center justify-center"
+                            style={{ 
+                              backgroundColor: achievement.color,
+                              padding: `${getProportionalPadding(64)}px`
+                            }}
+                          >
+                            <Award className="w-8 h-8 text-white" />
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Название бейджа */}
+                      <p className="text-xs text-center mt-2 text-gray-600 max-w-16">
+                        {achievement.name}
+                      </p>
+                    </div>
+                  );
+                })}
+                
+                {userAchievements.length === 0 && (
+                  <div className="text-center py-8 text-gray-500">
+                    <Award className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                    <p className="text-sm">У вас пока нет бейджей</p>
+                  </div>
+                )}
+              </div>
+            </div>
             
             <div className="flex justify-between text-sm mb-2">
               <span className="text-gray-700">Общий рейтинг</span>

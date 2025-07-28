@@ -273,6 +273,95 @@ const verifyCode = async (req, res) => {
   }
 };
 
+// @desc    Confirm authentication code (for Telegram mini-app)
+// @route   POST /api/auth/confirm-code
+// @access  Public
+const confirmCode = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ 
+        success: false, 
+        errors: errors.array() 
+      });
+    }
+
+    const { code } = req.body;
+
+    if (!code) {
+      return res.status(400).json({
+        success: false,
+        message: 'Код обязателен'
+      });
+    }
+
+    // Find code in active codes
+    let foundCodeData = null;
+    let foundLogin = null;
+    
+    for (const [login, codeData] of activeCodes.entries()) {
+      if (codeData.code === code) {
+        foundCodeData = codeData;
+        foundLogin = login;
+        break;
+      }
+    }
+    
+    if (!foundCodeData) {
+      return res.status(400).json({
+        success: false,
+        message: 'Код не найден или истек'
+      });
+    }
+
+    // Check if code expired
+    if (new Date() > foundCodeData.expiresAt) {
+      activeCodes.delete(foundLogin);
+      return res.status(400).json({
+        success: false,
+        message: 'Код истек'
+      });
+    }
+
+    // Find employee in MySQL database
+    const employee = await Employee.findByPk(foundCodeData.employeeId, {
+      include: [
+        { model: Department, as: 'department' },
+        { model: Role, as: 'adminRoles' }
+      ]
+    });
+
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: 'Пользователь не найден'
+      });
+    }
+
+    // Update last login
+    await employee.update({ last_login: new Date() });
+
+    // Generate token
+    const token = generateToken(employee.id);
+
+    // Remove used code
+    activeCodes.delete(foundLogin);
+
+    res.json({
+      success: true,
+      message: 'Авторизация успешна',
+      token,
+      employee: getPublicProfile(employee.toJSON())
+    });
+  } catch (error) {
+    console.error('Confirm code error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Ошибка сервера'
+    });
+  }
+};
+
 // @desc    Get current user profile
 // @route   GET /api/auth/me
 // @access  Private
@@ -791,5 +880,6 @@ module.exports = {
   logout,
   sendCode,
   verifyCode,
-  addEmployee
+  addEmployee,
+  confirmCode
 }; 

@@ -2,63 +2,85 @@
 
 module.exports = {
   async up(queryInterface, Sequelize) {
+    // Функция для безопасного добавления индекса
+    const addIndexIfNotExists = async (tableName, columns, options) => {
+      try {
+        // Проверяем существование таблицы
+        const tables = await queryInterface.showAllTables();
+        if (!tables.includes(tableName)) {
+          console.log(`Table ${tableName} doesn't exist, skipping index creation...`);
+          return;
+        }
+        
+        await queryInterface.addIndex(tableName, columns, options);
+      } catch (error) {
+        if (error.message.includes('Duplicate key name')) {
+          console.log(`Index ${options.name} already exists, skipping...`);
+        } else if (error.message.includes("doesn't exist")) {
+          console.log(`Column doesn't exist in table ${tableName}, skipping index creation...`);
+        } else {
+          console.log(`Error creating index ${options.name}:`, error.message);
+        }
+      }
+    };
+
     // Индексы для ускорения поиска по email и telegram
-    await queryInterface.addIndex('employees', ['email'], {
+    await addIndexIfNotExists('employees', ['email'], {
       name: 'idx_employees_email'
     });
     
-    await queryInterface.addIndex('employees', ['telegram'], {
+    await addIndexIfNotExists('employees', ['telegram'], {
       name: 'idx_employees_telegram'
     });
     
     // Индекс для статуса сотрудников
-    await queryInterface.addIndex('employees', ['status'], {
+    await addIndexIfNotExists('employees', ['status'], {
       name: 'idx_employees_status'
     });
     
     // Индекс для поиска по имени и фамилии
-    await queryInterface.addIndex('employees', ['first_name', 'last_name'], {
+    await addIndexIfNotExists('employees', ['first_name', 'last_name'], {
       name: 'idx_employees_name_search'
     });
     
-    // Индексы для токенов
-    await queryInterface.addIndex('tokens', ['employee_id'], {
+    // Индексы для токенов (пропускаем, если таблица не существует)
+    await addIndexIfNotExists('tokens', ['employee_id'], {
       name: 'idx_tokens_employee_id'
     });
     
-    await queryInterface.addIndex('tokens', ['status'], {
+    await addIndexIfNotExists('tokens', ['status'], {
       name: 'idx_tokens_status'
     });
     
-    // Индексы для уведомлений
-    await queryInterface.addIndex('notifications', ['status'], {
+    // Индексы для уведомлений (пропускаем, если таблица не существует)
+    await addIndexIfNotExists('notifications', ['status'], {
       name: 'idx_notifications_status'
     });
     
-    await queryInterface.addIndex('notifications', ['send_time'], {
+    await addIndexIfNotExists('notifications', ['send_time'], {
       name: 'idx_notifications_send_time'
     });
     
-    // Индексы для отпусков
-    await queryInterface.addIndex('vacations', ['employee_id'], {
+    // Индексы для отпусков (пропускаем, если таблица не существует)
+    await addIndexIfNotExists('vacations', ['employee_id'], {
       name: 'idx_vacations_employee_id'
     });
     
-    await queryInterface.addIndex('vacations', ['start_date', 'end_date'], {
+    await addIndexIfNotExists('vacations', ['start_date', 'end_date'], {
       name: 'idx_vacations_date_range'
     });
     
-    // Индексы для продуктов
-    await queryInterface.addIndex('products', ['status'], {
+    // Индексы для продуктов (пропускаем, если таблица не существует)
+    await addIndexIfNotExists('products', ['status'], {
       name: 'idx_products_status'
     });
     
-    // Индексы для навыков сотрудников
-    await queryInterface.addIndex('employee_skills', ['employee_id'], {
+    // Индексы для навыков сотрудников (пропускаем, если таблица не существует)
+    await addIndexIfNotExists('employee_skills', ['employee_id'], {
       name: 'idx_employee_skills_employee_id'
     });
     
-    await queryInterface.addIndex('employee_skills', ['skill_id'], {
+    await addIndexIfNotExists('employee_skills', ['skill_id'], {
       name: 'idx_employee_skills_skill_id'
     });
   },

@@ -11,6 +11,7 @@ module.exports = {
       phone: { type: Sequelize.STRING(20), allowNull: true },
       telegram: { type: Sequelize.STRING(100), allowNull: true },
       telegram_chat_id: { type: Sequelize.BIGINT, allowNull: true, comment: 'ID чата Telegram бота с сотрудником' },
+      telegram_id: { type: Sequelize.BIGINT, allowNull: true, comment: 'ID пользователя в Telegram для авторизации' },
       birth_date: { type: Sequelize.DATE, allowNull: true },
       wishlist_url: { type: Sequelize.STRING(500), allowNull: true },
       position: { type: Sequelize.STRING(100), allowNull: false },
@@ -36,10 +37,24 @@ module.exports = {
       createdAt: { type: Sequelize.DATE, allowNull: false, defaultValue: Sequelize.literal('CURRENT_TIMESTAMP') },
       updatedAt: { type: Sequelize.DATE, allowNull: false, defaultValue: Sequelize.literal('CURRENT_TIMESTAMP') }
     });
-    await queryInterface.addIndex('employees', ['email']);
-    await queryInterface.addIndex('employees', ['department_id']);
-    await queryInterface.addIndex('employees', ['status']);
-    await queryInterface.addIndex('employees', ['first_name', 'last_name']);
+    
+    // Функция для безопасного добавления индекса
+    const addIndexIfNotExists = async (tableName, columns, options) => {
+      try {
+        await queryInterface.addIndex(tableName, columns, options);
+      } catch (error) {
+        if (error.message.includes('Duplicate key name')) {
+          console.log(`Index already exists, skipping...`);
+        } else {
+          throw error;
+        }
+      }
+    };
+    
+    await addIndexIfNotExists('employees', ['email']);
+    await addIndexIfNotExists('employees', ['department_id']);
+    await addIndexIfNotExists('employees', ['status']);
+    await addIndexIfNotExists('employees', ['first_name', 'last_name']);
   },
   async down(queryInterface, Sequelize) {
     await queryInterface.dropTable('employees');

@@ -2,6 +2,13 @@
 
 module.exports = {
   async up(queryInterface, Sequelize) {
+    // Проверяем, существует ли таблица
+    const tables = await queryInterface.showAllTables();
+    if (tables.includes('tokens')) {
+      console.log('Table tokens already exists, skipping creation');
+      return;
+    }
+
     await queryInterface.createTable('tokens', {
       id: { type: Sequelize.INTEGER, primaryKey: true, autoIncrement: true },
       publicId: { type: Sequelize.STRING(36), allowNull: false, unique: true },
@@ -18,11 +25,37 @@ module.exports = {
       createdAt: { type: Sequelize.DATE, allowNull: false, defaultValue: Sequelize.literal('CURRENT_TIMESTAMP') },
       updatedAt: { type: Sequelize.DATE, allowNull: false, defaultValue: Sequelize.literal('CURRENT_TIMESTAMP') }
     });
-    await queryInterface.addIndex('tokens', ['employeeId']);
-    await queryInterface.addIndex('tokens', ['tokenTypeId']);
-    await queryInterface.addIndex('tokens', ['senderId']);
-    await queryInterface.addIndex('tokens', ['status']);
-    await queryInterface.addIndex('tokens', ['receivedAt']);
+
+    // Добавляем индексы с обработкой ошибок
+    try {
+      await queryInterface.addIndex('tokens', ['employeeId']);
+    } catch (error) {
+      console.log('Index tokens_employeeId already exists');
+    }
+
+    try {
+      await queryInterface.addIndex('tokens', ['tokenTypeId']);
+    } catch (error) {
+      console.log('Index tokens_tokenTypeId already exists');
+    }
+
+    try {
+      await queryInterface.addIndex('tokens', ['senderId']);
+    } catch (error) {
+      console.log('Index tokens_senderId already exists');
+    }
+
+    try {
+      await queryInterface.addIndex('tokens', ['status']);
+    } catch (error) {
+      console.log('Index tokens_status already exists');
+    }
+
+    try {
+      await queryInterface.addIndex('tokens', ['receivedAt']);
+    } catch (error) {
+      console.log('Index tokens_receivedAt already exists');
+    }
   },
   async down(queryInterface, Sequelize) {
     await queryInterface.dropTable('tokens');

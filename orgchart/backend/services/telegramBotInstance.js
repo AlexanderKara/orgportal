@@ -278,6 +278,7 @@ const setupBotCommands = (bot) => {
     { command: '/help', description: 'Показать справку' },
     { command: '/status', description: 'Проверить статус подключения' },
     { command: '/link', description: 'Связать чат с аккаунтом' },
+    { command: '/bind', description: 'Привязать Telegram ID к аккаунту' },
     { command: '/chatid', description: 'Показать ID чата' }
   ]);
 };
@@ -316,10 +317,36 @@ const setupBotHandlers = (bot) => {
       
       // Сохраняем информацию о чате в базу данных
       if (chatType === 'private') {
-        // Для личных чатов пытаемся найти сотрудника по username
+        // Для личных чатов автоматически привязываем telegram_id
+        const userId = msg.from.id;
         const username = msg.from.username;
-        if (username) {
-          await saveChatIdToDatabase(`@${username}`, chatId);
+        
+        // Пытаемся найти сотрудника по telegram_id или username
+        let employee = await Employee.findOne({
+          where: { telegram_id: userId }
+        });
+        
+        if (!employee && username) {
+          // Если не найден по telegram_id, ищем по username
+          employee = await Employee.findOne({
+            where: { telegram: `@${username}` }
+          });
+          
+          // Если найден по username, обновляем telegram_id
+          if (employee) {
+            await employee.update({ 
+              telegram_id: userId,
+              telegram_chat_id: chatId 
+            });
+          }
+        } else if (employee) {
+          // Если найден по telegram_id, обновляем chat_id
+          await employee.update({ telegram_chat_id: chatId });
+        }
+        
+        // Если сотрудник не найден, сохраняем chat_id для будущей привязки
+        if (!employee) {
+          await saveChatIdToDatabase(`@${username || 'unknown'}`, chatId);
         }
       } else {
         // Для групповых чатов создаем запись
@@ -505,6 +532,77 @@ const setupBotHandlers = (bot) => {
       console.error('Error handling /link command:', error);
       
       const errorMessage = `❌ Ошибка при связывании чата
+
+Попробуйте позже или обратитесь к администратору.`;
+      
+      try {
+        await bot.sendMessage(chatId, errorMessage, { parse_mode: 'HTML' });
+      } catch (sendError) {
+        console.error('Error sending error message:', sendError);
+      }
+    }
+  });
+
+  // Обработчик команды /bind для привязки Telegram ID
+  bot.onText(/\/bind/, async (msg) => {
+    const chatId = msg.chat.id;
+    const userId = msg.from.id;
+    const username = msg.from.username;
+    const firstName = msg.from.first_name;
+    const lastName = msg.from.last_name || '';
+    
+    try {
+      // Проверяем, что это личный чат
+      if (msg.chat.type !== 'private') {
+        await bot.sendMessage(chatId, `❌ Команда /bind доступна только в личных чатах с ботом.`, { parse_mode: 'HTML' });
+        return;
+      }
+
+      // Проверяем, есть ли уже привязанный сотрудник
+      const existingEmployee = await Employee.findOne({
+        where: { telegram_id: userId }
+      });
+
+      if (existingEmployee) {
+        const message = `✅ Ваш Telegram ID уже привязан к сотруднику:
+
+👤 Имя: ${existingEmployee.first_name} ${existingEmployee.last_name}
+📧 Email: ${existingEmployee.email}
+🏢 Должность: ${existingEmployee.position}
+
+Теперь вы можете авторизоваться в системе через Telegram Login Widget.`;
+        
+        await bot.sendMessage(chatId, message, { parse_mode: 'HTML' });
+        return;
+      }
+
+      // Показываем информацию для привязки
+      const bindMessage = `🔗 Привязка Telegram ID к аккаунту
+
+🆔 Ваш Telegram ID: ${userId}
+👤 Имя: ${firstName} ${lastName}
+📝 Username: ${username ? `@${username}` : 'Не указан'}
+💬 ID чата: ${chatId}
+
+📧 Для привязки отправьте администратору:
+1. Ваш email в системе Team-A
+2. Этот Telegram ID: ${userId}
+
+После привязки вы сможете авторизоваться через Telegram Login Widget.
+
+💡 Администратор может использовать команду:
+/api/auth/bind-telegram с параметрами:
+- email: ваш_email@company.com
+- telegram_id: ${userId}
+
+⚠️ Примечание: Telegram ID равен ID чата в личных сообщениях с ботом.`;
+      
+      await bot.sendMessage(chatId, bindMessage, { parse_mode: 'HTML' });
+      
+    } catch (error) {
+      console.error('Error handling /bind command:', error);
+      
+      const errorMessage = `❌ Ошибка при получении информации
 
 Попробуйте позже или обратитесь к администратору.`;
       
