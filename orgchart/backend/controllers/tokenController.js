@@ -255,43 +255,66 @@ const getTopRating = async (req, res) => {
   try {
     const { year = new Date().getFullYear() } = req.query;
 
-    const topEmployees = await models.Employee.findAll({
+    // Получаем всех сотрудников с их полученными токенами
+    const allEmployees = await models.Employee.findAll({
       include: [
         {
-          model: models.EmployeeToken,
-          as: 'employeeTokens',
-          where: { year: parseInt(year) },
-          include: [{
-            model: models.TokenType,
-            as: 'tokenType'
-          }]
-        },
-        {
-          model: models.EmployeeAchievement,
-          as: 'employeeAchievements',
-          where: { year: parseInt(year) },
-          include: [{
-            model: models.Achievement,
-            as: 'achievement'
-          }]
+          model: models.Department,
+          as: 'department'
         }
-      ],
-      order: [
-        [{ model: models.EmployeeToken, as: 'employeeTokens' }, 'count', 'DESC']
-      ],
-      limit: 20
+      ]
     });
 
-    // Вычисляем общий рейтинг
-    const employeesWithRating = topEmployees.map(employee => {
-      const totalPoints = employee.employeeTokens.reduce((sum, token) => {
-        return sum + (token.count * token.tokenType.value);
+    // Получаем все полученные токены за указанный год
+    const receivedTokens = await models.TokenTransaction.findAll({
+      where: {
+        recipientId: { [Op.ne]: null },
+        createdAt: {
+          [Op.gte]: new Date(year, 0, 1),
+          [Op.lt]: new Date(year + 1, 0, 1)
+        }
+      },
+      include: [
+        {
+          model: models.TokenType,
+          as: 'tokenType'
+        }
+      ]
+    });
+
+    // Получаем все достижения за указанный год
+    const achievements = await models.EmployeeAchievement.findAll({
+      where: {
+        year: parseInt(year)
+      },
+      include: [
+        {
+          model: models.Achievement,
+          as: 'achievement'
+        }
+      ]
+    });
+
+    // Вычисляем рейтинг для каждого сотрудника
+    const employeesWithRating = allEmployees.map(employee => {
+      // Подсчитываем полученные токены сотрудника
+      const employeeTokens = receivedTokens.filter(token => 
+        token.recipientId === employee.id
+      );
+      
+      const totalPoints = employeeTokens.reduce((sum, token) => {
+        return sum + (token.tokenType.value || 1);
       }, 0);
+
+      // Подсчитываем достижения сотрудника
+      const employeeAchievements = achievements.filter(achievement => 
+        achievement.employeeId === employee.id
+      );
 
       return {
         ...employee.toJSON(),
         totalPoints,
-        achievements: employee.employeeAchievements.length
+        achievements: employeeAchievements.length
       };
     });
 
@@ -771,14 +794,28 @@ const checkAutoDistribution = async (req, res) => {
 // Получение статуса сервиса автоматического распределения токенов
 const getTokenDistributionServiceStatus = async (req, res) => {
   try {
-    const tokenDistributionService = require('../services/tokenDistributionService');
+    const { DistributionSettings } = require('../models');
+    
+    // Получаем настройки сервиса
+    let settings = await DistributionSettings.findOne();
+    if (!settings) {
+      // Создаем настройки по умолчанию если их нет
+      settings = await DistributionSettings.create({
+        serviceEnabled: true,
+        executionTime: '09:00:00',
+        timezone: 'Europe/Moscow',
+        workingDaysOnly: true
+      });
+    }
+    
+    const isServiceEnabled = settings.serviceEnabled;
     
     res.json({
       success: true,
       data: {
-        serviceStatus: tokenDistributionService.isRunning ? 'running' : 'stopped',
-        isRunning: tokenDistributionService.isRunning,
-        message: tokenDistributionService.isRunning ? 'Сервис работает' : 'Сервис приостановлен'
+        serviceStatus: isServiceEnabled ? 'running' : 'stopped',
+        isRunning: isServiceEnabled,
+        message: isServiceEnabled ? 'Сервис работает' : 'Сервис приостановлен'
       }
     });
   } catch (error) {

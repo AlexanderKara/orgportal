@@ -97,7 +97,7 @@ router.put('/', authMiddleware, async (req, res) => {
       });
     }
 
-    res.json({ message: 'Настройки обновлены успешно', settings });
+    res.json(settings);
   } catch (error) {
     console.error('Error updating distribution settings:', error);
     res.status(500).json({ error: 'Ошибка обновления настроек распределения' });
