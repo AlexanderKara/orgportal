@@ -71,15 +71,15 @@ const permissionActions = [
 ];
 
 const iconOptions = [
-  { value: 'shield', label: 'Щит', icon: <Shield className="w-4 h-4" /> },
-  { value: 'shield-check', label: 'Щит с галочкой', icon: <Shield className="w-4 h-4" /> },
-  { value: 'users', label: 'Пользователи', icon: <Users className="w-4 h-4" /> },
-  { value: 'user-check', label: 'Проверка', icon: <UserCheck className="w-4 h-4" /> },
-  { value: 'user', label: 'Пользователь', icon: <User className="w-4 h-4" /> },
-  { value: 'user-group', label: 'Группа пользователей', icon: <Users className="w-4 h-4" /> },
-  { value: 'briefcase', label: 'Портфель', icon: <Key className="w-4 h-4" /> },
-  { value: 'archive', label: 'Архив', icon: <Archive className="w-4 h-4" /> },
-  { value: 'settings', label: 'Настройки', icon: <Settings className="w-4 h-4" /> },
+  { value: 'shield', label: 'Щит' },
+  { value: 'shield-check', label: 'Щит с галочкой' },
+  { value: 'users', label: 'Пользователи' },
+  { value: 'user-check', label: 'Проверка' },
+  { value: 'user', label: 'Пользователь' },
+  { value: 'user-group', label: 'Группа пользователей' },
+  { value: 'briefcase', label: 'Портфель' },
+  { value: 'archive', label: 'Архив' },
+  { value: 'settings', label: 'Настройки' },
 ];
 
 export default function RoleModal({ isOpen, onClose, onSubmit, role = null, hideButtons = false }) {
@@ -780,7 +780,13 @@ export default function RoleModal({ isOpen, onClose, onSubmit, role = null, hide
                     styles={customSelectStyles}
                     formatOptionLabel={(option) => (
                       <div className="flex items-center gap-2">
-                        {option.icon}
+                        {getIconComponent(option.value)}
+                        <span>{option.label}</span>
+                      </div>
+                    )}
+                    formatSelectedOption={(option) => (
+                      <div className="flex items-center gap-2">
+                        {getIconComponent(option.value)}
                         <span>{option.label}</span>
                       </div>
                     )}

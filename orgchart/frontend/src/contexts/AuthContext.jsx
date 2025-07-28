@@ -126,8 +126,25 @@ export default function AuthProvider({ children }) {
     setError(null);
   };
 
-  const login = (token, userData) => {
+  const login = async (token, userData = null) => {
     localStorage.setItem('token', token);
+    
+    // Если данные пользователя не переданы, загружаем их
+    if (!userData) {
+      try {
+        const response = await api.getMe();
+        userData = response.employee || response;
+      } catch (error) {
+        console.error('Error loading user data:', error);
+        // Если не удалось загрузить данные, устанавливаем базовое состояние
+        setUserData(null);
+        setIsAuthenticated(true);
+        hasCheckedRef.current = true;
+        setError(null);
+        return;
+      }
+    }
+    
     setUserData(userData);
     setIsAuthenticated(true);
     hasCheckedRef.current = true;

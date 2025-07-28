@@ -5,9 +5,11 @@ import {
 } from 'lucide-react';
 import Select from 'react-select';
 import RoleModal from '../../components/RoleModal';
+import Checkbox from '../../components/ui/Checkbox';
 import api from '../../services/api';
 import { showNotification } from '../../utils/notifications';
 import { useAuth } from '../../contexts/AuthContext';
+import { exportData, importFile } from '../../utils/exportUtils';
 
 const customSelectStyles = {
   control: (provided, state) => ({
@@ -267,50 +269,35 @@ export default function Roles() {
 
   const handleExport = () => {
     const data = filteredRoles.map(role => ({
-      'Название': role.name,
+      'Название': role.name || '',
       'Описание': role.description || '',
-      'Статус': getStatusText(role.status),
+      'Статус': getStatusText(role.status) || '',
       'Сотрудников': role.employee_count || 0,
       'Системная': role.is_system ? 'Да' : 'Нет',
-      'Модули': role.permissions ? role.permissions.map(p => p.module).join(';') : '',
-      'Действия': role.permissions ? role.permissions.reduce((acc, p) => [...acc, ...p.actions], []).join(';') : '',
+      'Модули': role.permissions ? role.permissions.map(p => p.module).join('\n') : '',
+      'Действия': role.permissions ? role.permissions.reduce((acc, p) => [...acc, ...p.actions], []).join('\n') : '',
     }));
 
-    // Экспорт с разделителем точка с запятой и экранированием
-    const csv = [
-      Object.keys(data[0]).join(';'),
-      ...data.map(row => Object.values(row).map(value => {
-        const stringValue = String(value);
-        if (stringValue.includes(';') || stringValue.includes('"') || stringValue.includes('\n')) {
-          return `"${stringValue.replace(/"/g, '""')}"`;
-        }
-        return stringValue;
-      }).join(';'))
-    ].join('\n');
-
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `roles_${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
+    // Используем универсальную функцию экспорта в Excel
+    exportData(data, 'roles', 'excel', null, 'Роли');
   };
 
   const handleImport = () => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.csv';
-    input.onchange = (e) => {
+    input.accept = '.xlsx,.xls,.csv';
+    input.onchange = async (e) => {
       const file = e.target.files[0];
       if (file) {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          const csv = event.target.result;
-          // Здесь будет логика обработки CSV
-          console.log('CSV импорт:', csv);
-        };
-        reader.readAsText(file);
+        try {
+          // Используем универсальную функцию импорта
+          const importedData = await importFile(file);
+          console.log('Imported data:', importedData);
+          // Здесь можно добавить логику обработки импортированных данных
+        } catch (error) {
+          console.error('Ошибка импорта:', error);
+          showNotification('Ошибка при импорте файла', 'error');
+        }
       }
     };
     input.click();
@@ -570,11 +557,9 @@ export default function Roles() {
             <thead className="bg-gray">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-dark tracking-wider">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={selectedRoles.size === filteredRoles.length && filteredRoles.length > 0}
                     onChange={handleSelectAll}
-                    className="rounded border-gray-300 text-primary focus:ring-primary"
                   />
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-dark tracking-wider">
@@ -628,11 +613,9 @@ export default function Roles() {
               {filteredRoles.map((role, index) => (
                 <tr key={role.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray/5'}>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={selectedRoles.has(role.id)}
                       onChange={() => handleSelectRole(role.id)}
-                      className="rounded border-gray-300 text-primary focus:ring-primary"
                     />
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">

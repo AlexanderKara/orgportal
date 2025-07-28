@@ -24,6 +24,7 @@ import NotFound from './pages/errors/NotFound';
 import ServerError from './pages/errors/ServerError';
 import TelegramMiniApp from './pages/TelegramMiniApp';
 import TelegramBinding from './pages/TelegramBinding';
+import ErrorBoundaryWrapper from './components/ErrorBoundary';
 
 // Динамические импорты для больших компонентов
 const Admin = lazy(() => import('./pages/Admin'));
@@ -48,6 +49,7 @@ const ReceiveToken = lazy(() => import('./pages/ReceiveToken'));
 const TokenDistributionService = lazy(() => import('./pages/admin/TokenDistributionService'));
 const DistributionSettings = lazy(() => import('./pages/admin/DistributionSettings'));
 const Achievements = lazy(() => import('./pages/admin/Achievements'));
+const AppSettings = lazy(() => import('./pages/admin/Settings'));
 
 // Компонент загрузки
 const LoadingSpinner = () => (
@@ -62,6 +64,7 @@ export default function App() {
       <AuthProvider>
         <RoleProvider>
           <BrowserRouter>
+            <ErrorBoundaryWrapper>
           <Routes>
             {/* Публичные маршруты */}
             <Route path="/auth" element={
@@ -112,6 +115,10 @@ export default function App() {
               <Route path="alphabet" element={<Structure />} />
               <Route path="tree" element={<Structure />} />
               <Route path="list" element={<Structure />} />
+              <Route path="birthdays" element={<Structure />} />
+              <Route path="vacations" element={<Structure />} />
+              <Route path="joined" element={<Structure />} />
+              <Route path="rating" element={<Structure />} />
             </Route>
             
             <Route path="/products" element={
@@ -273,9 +280,24 @@ export default function App() {
                   <DistributionSettings />
                 </Suspense>
               } />
+              <Route path="settings" element={
+                <Suspense fallback={<LoadingSpinner />}>
+                  <AppSettings />
+                </Suspense>
+              } />
               <Route path="achievements" element={
                 <Suspense fallback={<LoadingSpinner />}>
-                  <Achievements />
+                  <Achievements defaultView="types" />
+                </Suspense>
+              } />
+              <Route path="achievements/types" element={
+                <Suspense fallback={<LoadingSpinner />}>
+                  <Achievements defaultView="types" />
+                </Suspense>
+              } />
+              <Route path="achievements/employees" element={
+                <Suspense fallback={<LoadingSpinner />}>
+                  <Achievements defaultView="employees" />
                 </Suspense>
               } />
 
@@ -340,6 +362,7 @@ export default function App() {
             
             <Route path="*" element={<NotFound />} />
           </Routes>
+        </ErrorBoundaryWrapper>
         </BrowserRouter>
           </RoleProvider>
         </AuthProvider>

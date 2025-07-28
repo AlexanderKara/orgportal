@@ -5,6 +5,12 @@ import { getProportionalPadding } from '../../utils/padding';
 import { showNotification } from '../../utils/notifications';
 
 const getAchievementIcon = (icon) => {
+  try {
+    // Проверяем, что icon является строкой
+    if (!icon || typeof icon !== 'string') {
+      return <Award className="w-6 h-6 text-primary" />;
+    }
+
   const iconMap = {
     'award': <Award className="w-6 h-6 text-primary" />,
     'star': <Star className="w-6 h-6 text-yellow-500" />,
@@ -14,7 +20,16 @@ const getAchievementIcon = (icon) => {
     'zap': <Zap className="w-6 h-6 text-yellow-400" />,
     'calendar': <Calendar className="w-6 h-6 text-green-500" />
   };
-  return iconMap[icon] || <Award className="w-6 h-6 text-primary" />;
+    
+    const iconComponent = iconMap[icon];
+    if (!iconComponent) {
+      return <Award className="w-6 h-6 text-primary" />;
+    }
+    
+    return iconComponent;
+  } catch (error) {
+    return <Award className="w-6 h-6 text-primary" />;
+  }
 };
 
 const customSelectStyles = {
@@ -63,13 +78,11 @@ export default function AssignAchievementModal({
   existingAchievements = []
 }) {
   const [selectedAchievement, setSelectedAchievement] = useState(null);
-  const [selectedImage, setSelectedImage] = useState('');
   const [errors, setErrors] = useState({});
 
   useEffect(() => {
     if (isOpen) {
       setSelectedAchievement(null);
-      setSelectedImage('');
       setErrors({});
     }
   }, [isOpen]);
@@ -88,7 +101,7 @@ export default function AssignAchievementModal({
     const newErrors = {};
     
     if (!selectedAchievement) {
-      newErrors.achievement = 'Выберите достижение';
+      newErrors.achievement = 'Выберите бейдж';
     }
     
     setErrors(newErrors);
@@ -103,9 +116,8 @@ export default function AssignAchievementModal({
     }
     
     const assignmentData = {
-      employee_id: employee.id,
-      achievement_id: selectedAchievement.value,
-      image: selectedImage || null
+      employeeId: employee.id,
+      achievementId: selectedAchievement.value
     };
     
     onSubmit(assignmentData);
@@ -114,17 +126,14 @@ export default function AssignAchievementModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[999999] p-4 overflow-hidden">
       <div className="bg-white rounded-[15px] w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         {/* Заголовок */}
         <div className="flex items-center justify-between p-6 border-b border-gray/20">
           <div>
             <h2 className="text-xl font-semibold text-dark">
-              Назначить достижение
+              Отправить бейдж
             </h2>
-            <p className="text-sm text-gray-600 mt-1">
-              Выберите достижение для сотрудника {employee?.name}
-            </p>
           </div>
           <button
             onClick={onClose}
@@ -136,35 +145,82 @@ export default function AssignAchievementModal({
 
         {/* Форма */}
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {/* Выбор достижения */}
+          {/* Выбор бейджа */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Выберите достижение *
+              Выберите бейдж *
             </label>
             <Select
               value={selectedAchievement}
-              onChange={setSelectedAchievement}
+              onChange={(option) => {
+                setSelectedAchievement(option);
+                if (option) {
+                  setErrors(prev => ({ ...prev, achievement: null }));
+                }
+              }}
               options={achievementOptions}
               styles={customSelectStyles}
-              formatOptionLabel={({ label, achievement }) => (
+                             formatOptionLabel={({ label, achievement }) => {
+                 // Проверяем, что achievement существует и является объектом
+                 if (!achievement || typeof achievement !== 'object') {
+                   return <div className="text-red-500">Ошибка загрузки данных</div>;
+                 }
+
+                 // Проверяем, что label является строкой
+                 if (typeof label !== 'string') {
+                   return <div className="text-red-500">Ошибка загрузки данных</div>;
+                 }
+
+                 // Проверяем, что description является строкой или null/undefined
+                 const description = achievement.description;
+                 if (description !== null && description !== undefined && typeof description !== 'string') {
+                   return <div className="text-red-500">Ошибка загрузки данных</div>;
+                 }
+
+                return (
                 <div className="flex items-center gap-3">
+                    {achievement.image ? (
                   <div 
-                    className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center"
+                        className="w-8 h-8 rounded-full overflow-hidden"
                     style={{ padding: `${getProportionalPadding(32)}px` }}
                   >
-                    {getAchievementIcon(achievement.icon)}
+                        <img 
+                          src={achievement.image} 
+                          alt={achievement.name || 'Бейдж'}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    ) : (
+                      <div 
+                        className="w-8 h-8 rounded-full flex items-center justify-center"
+                        style={{ 
+                          backgroundColor: achievement.color || '#f3f4f6',
+                          padding: `${getProportionalPadding(32)}px`
+                        }}
+                      >
+                                               {(() => {
+                         try {
+                           return achievement.icon ? getAchievementIcon(achievement.icon) : <Award className="w-4 h-4 text-primary" />;
+                         } catch (error) {
+                           return <Award className="w-4 h-4 text-primary" />;
+                         }
+                       })()}
                   </div>
+                    )}
                   <div className="flex-1">
-                    <div className="font-medium text-dark">{label}</div>
-                    <div className="text-sm text-gray-600">{achievement.description}</div>
+                      <div className="font-medium text-dark">{String(label)}</div>
+                      <div className="text-sm text-gray-600">{String(description || '')}</div>
                   </div>
-                  {achievement.is_unique && (
+                    {achievement.is_unique === true && (
                     <Crown className="w-4 h-4 text-purple-500" />
                   )}
                 </div>
-              )}
-              placeholder="Выберите достижение..."
+                );
+              }}
+              placeholder="Выберите бейдж..."
               isClearable
+              noOptionsMessage={() => "Бейджи не найдены"}
+              loadingMessage={() => "Загрузка..."}
             />
             {errors.achievement && (
               <p className="text-red-500 text-sm mt-1">{errors.achievement}</p>
@@ -172,22 +228,52 @@ export default function AssignAchievementModal({
           </div>
 
           {/* Предварительный просмотр */}
-          {selectedAchievement && (
+          {selectedAchievement && selectedAchievement.achievement && (
             <div className="bg-gray-50 rounded-[12px] p-4 border border-gray/20">
               <h3 className="text-sm font-medium text-gray-700 mb-3">Предварительный просмотр</h3>
               <div className="flex items-center gap-3">
+                {selectedAchievement.achievement.image ? (
                 <div 
-                  className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center"
+                    className="w-12 h-12 rounded-full overflow-hidden"
                   style={{ padding: `${getProportionalPadding(48)}px` }}
                 >
-                  {getAchievementIcon(selectedAchievement.achievement.icon)}
+                    <img 
+                      src={selectedAchievement.achievement.image} 
+                      alt={selectedAchievement.achievement.name || 'Бейдж'}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ) : (
+                  <div 
+                    className="w-12 h-12 rounded-full flex items-center justify-center"
+                    style={{ 
+                      backgroundColor: selectedAchievement.achievement.color || '#f3f4f6',
+                      padding: `${getProportionalPadding(48)}px`
+                    }}
+                  >
+                                         {(() => {
+                       try {
+                         return selectedAchievement.achievement.icon ? getAchievementIcon(selectedAchievement.achievement.icon) : <Award className="w-6 h-6 text-primary" />;
+                       } catch (error) {
+                         return <Award className="w-6 h-6 text-primary" />;
+                       }
+                     })()}
                 </div>
+                )}
                 <div className="flex-1">
-                  <h4 className="font-medium text-dark">{selectedAchievement.achievement.name}</h4>
-                  <p className="text-sm text-gray-600">{selectedAchievement.achievement.description}</p>
-                  <p className="text-xs text-gray-500 mt-1">{selectedAchievement.achievement.criteria}</p>
+                  <h4 className="font-medium text-dark">{String(selectedAchievement.achievement.name || 'Бейдж')}</h4>
+                  <p className="text-sm text-gray-600">{String(selectedAchievement.achievement.description || '')}</p>
+                                     {(() => {
+                     const criteria = selectedAchievement.achievement.criteria;
+                     if (criteria && typeof criteria === 'string' && criteria.trim() !== '') {
+                       return <p className="text-xs text-gray-500 mt-1">{String(criteria)}</p>;
+                     } else if (criteria && typeof criteria === 'object') {
+                       return null;
+                     }
+                     return null;
+                   })()}
                 </div>
-                {selectedAchievement.achievement.is_unique && (
+                {selectedAchievement.achievement.is_unique === true && (
                   <div className="flex items-center gap-1">
                     <Crown className="w-4 h-4 text-purple-500" />
                     <span className="text-xs text-purple-600">Уникальное</span>
@@ -197,82 +283,47 @@ export default function AssignAchievementModal({
             </div>
           )}
 
-          {/* Настройки изображения */}
-          {selectedAchievement && (
-            <div className="space-y-4">
-              <h3 className="text-sm font-medium text-gray-700">Настройки изображения</h3>
-              
-              <div className="space-y-3">
-                <label className="flex items-center gap-3">
-                  <input
-                    type="radio"
-                    name="imageType"
-                    value="icon"
-                    checked={!selectedImage}
-                    onChange={() => setSelectedImage('')}
-                    className="w-4 h-4 text-primary border-gray/20 focus:ring-primary"
-                  />
-                  <Award className="w-4 h-4 text-gray-500" />
-                  <span className="text-sm text-gray-700">Использовать иконку</span>
-                </label>
-                
-                <label className="flex items-center gap-3">
-                  <input
-                    type="radio"
-                    name="imageType"
-                    value="random"
-                    checked={selectedImage === 'random'}
-                    onChange={() => setSelectedImage('random')}
-                    className="w-4 h-4 text-primary border-gray/20 focus:ring-primary"
-                  />
-                  <Shuffle className="w-4 h-4 text-gray-500" />
-                  <span className="text-sm text-gray-700">Случайное изображение</span>
-                </label>
-                
-                <label className="flex items-center gap-3">
-                  <input
-                    type="radio"
-                    name="imageType"
-                    value="custom"
-                    checked={selectedImage && selectedImage !== 'random'}
-                    onChange={() => setSelectedImage('')}
-                    className="w-4 h-4 text-primary border-gray/20 focus:ring-primary"
-                  />
-                  <Image className="w-4 h-4 text-gray-500" />
-                  <span className="text-sm text-gray-700">Указать URL изображения</span>
-                </label>
-              </div>
-              
-              {selectedImage && selectedImage !== 'random' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    URL изображения
-                  </label>
-                  <input
-                    type="url"
-                    value={selectedImage}
-                    onChange={(e) => setSelectedImage(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray/20 rounded-[8px] text-sm transition focus:border-primary focus:ring-primary"
-                    placeholder="https://example.com/image.png"
-                  />
-                </div>
-              )}
-            </div>
-          )}
-
           {/* Информация о сотруднике */}
           <div className="bg-blue-50 rounded-[12px] p-4 border border-blue/20">
             <h3 className="text-sm font-medium text-blue-700 mb-2">Информация о сотруднике</h3>
             <div className="flex items-center gap-3">
+              {employee?.avatar ? (
+                <img 
+                  src={employee.avatar} 
+                  alt={employee.name}
+                  className="w-10 h-10 rounded-full object-cover"
+                />
+              ) : (
               <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
                 <span className="text-primary font-semibold">
-                  {employee?.name?.charAt(0) || '?'}
+                    {(() => {
+                      const firstName = employee?.first_name || employee?.firstName || employee?.name?.split(' ')[0] || '';
+                      const lastName = employee?.last_name || employee?.lastName || employee?.name?.split(' ')[1] || '';
+                      return firstName && lastName 
+                        ? `${firstName.charAt(0)}${lastName.charAt(0)}`
+                        : employee?.name?.charAt(0) || employee?.full_name?.charAt(0) || '?'
+                    })()}
                 </span>
               </div>
+              )}
               <div>
-                <p className="font-medium text-dark">{employee?.name}</p>
-                <p className="text-sm text-gray-600">{employee?.email}</p>
-                <p className="text-xs text-gray-500">{employee?.position}</p>
+                <p className="font-medium text-dark">
+                  {(() => {
+                    const firstName = employee?.first_name || employee?.firstName || '';
+                    const lastName = employee?.last_name || employee?.lastName || '';
+                    const fullName = employee?.name || employee?.full_name || '';
+                    
+                    if (firstName && lastName) {
+                      return `${String(firstName)} ${String(lastName)}`;
+                    } else if (fullName) {
+                      return String(fullName);
+                    } else {
+                      return 'Неизвестный сотрудник';
+                    }
+                  })()}
+                </p>
+                <p className="text-sm text-gray-600">{String(employee?.department?.name || employee?.email || 'Отдел не указан')}</p>
+                <p className="text-xs text-gray-500">{String(employee?.position || 'Должность не указана')}</p>
               </div>
             </div>
           </div>
@@ -293,7 +344,7 @@ export default function AssignAchievementModal({
             disabled={!selectedAchievement}
             className="px-4 py-2 bg-primary text-white rounded-[8px] text-sm font-medium transition hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Назначить достижение
+            Отправить бейдж
           </button>
         </div>
       </div>

@@ -3,6 +3,7 @@ import { X, Upload, Image, Type, Save, Plus, Minus } from 'lucide-react';
 import { getPointsText } from '../utils/dateUtils';
 import api from '../services/api';
 import { showNotification } from '../utils/notifications';
+import Checkbox from './ui/Checkbox';
 
 const periodOptions = [
   { value: 'week', label: 'Неделя' },
@@ -679,17 +680,13 @@ export default function TokenModal({ isOpen, onClose, onSubmit, token = null }) 
 
             {/* Автоматическое распределение */}
             <div className="border border-gray/20 rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-4">
-                <input
-                  type="checkbox"
+              <div className="mb-4">
+                <Checkbox
                   id="auto-distribution"
                   checked={formData.autoDistribution}
                   onChange={(e) => setFormData(prev => ({ ...prev, autoDistribution: e.target.checked }))}
-                  className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+                  label="Автоматическое распределение"
                 />
-                <label htmlFor="auto-distribution" className="text-sm font-medium text-gray-700">
-                  Автоматическое распределение
-                </label>
               </div>
               
               {formData.autoDistribution && (

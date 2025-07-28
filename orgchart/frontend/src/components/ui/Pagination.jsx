@@ -1,6 +1,18 @@
 import React from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
-const Pagination = ({ currentPage, totalPages, onPageChange, itemsPerPage, onItemsPerPageChange, totalItems }) => {
+const Pagination = ({ 
+  currentPage, 
+  totalPages, 
+  onPageChange, 
+  totalItems, 
+  itemsPerPage,
+  onItemsPerPageChange,
+  className = '' 
+}) => {
+  const startItem = (currentPage - 1) * itemsPerPage + 1;
+  const endItem = Math.min(currentPage * itemsPerPage, totalItems);
+
   const getPageNumbers = () => {
     const pages = [];
     const maxVisiblePages = 5;
@@ -36,28 +48,39 @@ const Pagination = ({ currentPage, totalPages, onPageChange, itemsPerPage, onIte
     return pages;
   };
 
+  if (totalPages <= 1) {
+    return null;
+  }
+
   return (
-    <div className="flex items-center justify-between bg-white rounded-[15px] border border-gray/50 p-4">
+    <div className={`flex items-center justify-between bg-white rounded-[15px] border border-gray/50 p-4 ${className}`}>
+      {/* Информация о количестве элементов */}
       <div className="flex items-center gap-4">
         <span className="text-sm text-gray-600">
-          Показано {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, totalItems)} из {totalItems}
+          Показано {startItem}-{endItem} из {totalItems}
         </span>
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-600">Строк на странице:</span>
-          <select
-            value={itemsPerPage}
-            onChange={(e) => onItemsPerPageChange(Number(e.target.value))}
-            className="border border-gray/20 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-          >
-            <option value={5}>5</option>
-            <option value={10}>10</option>
-            <option value={20}>20</option>
-            <option value={50}>50</option>
-          </select>
-        </div>
+        
+        {/* Селектор количества элементов на странице */}
+        {onItemsPerPageChange && (
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600">Строк на странице:</span>
+            <select
+              value={itemsPerPage}
+              onChange={(e) => onItemsPerPageChange(Number(e.target.value))}
+              className="border border-gray/20 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value={5}>5</option>
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+            </select>
+          </div>
+        )}
       </div>
       
+      {/* Навигация по страницам */}
       <div className="flex items-center gap-2">
+        {/* Кнопка "Предыдущая" */}
         <button
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
@@ -66,6 +89,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange, itemsPerPage, onIte
           ← Предыдущая
         </button>
         
+        {/* Номера страниц */}
         <div className="flex items-center gap-1">
           {getPageNumbers().map((page, index) => (
             <button
@@ -85,6 +109,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange, itemsPerPage, onIte
           ))}
         </div>
         
+        {/* Кнопка "Следующая" */}
         <button
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}

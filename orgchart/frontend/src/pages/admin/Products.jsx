@@ -5,8 +5,10 @@ import {
   Download, Upload, Archive, Check, X
 } from 'lucide-react';
 import Select from 'react-select';
+import Checkbox from '../../components/ui/Checkbox';
 import api from '../../services/api';
 import { showNotification } from '../utils/notifications';
+import { exportData, importFile } from '../../utils/exportUtils';
 
 const customSelectStyles = {
   control: (provided, state) => ({
@@ -215,58 +217,34 @@ export default function Products() {
 
   const handleExport = () => {
     const data = filteredProducts.map(product => ({
-      'Название': product.name,
-      'Описание': product.description,
-      'Категория': product.category,
-      'Статус': product.status,
-      'Команда': product.team,
-      'URL': product.url
+      'Название': product.name || '',
+      'Описание': product.description || '',
+      'Категория': product.category || '',
+      'Статус': getStatusText(product.status) || '',
+      'Команда': product.team || '',
+      'URL': product.url || ''
     }));
     
-    // Экспорт с разделителем точка с запятой и экранированием
-    const csv = [
-      Object.keys(data[0]).join(';'),
-      ...data.map(row => Object.values(row).map(value => {
-        const stringValue = String(value);
-        if (stringValue.includes(';') || stringValue.includes('"') || stringValue.includes('\n')) {
-          return `"${stringValue.replace(/"/g, '""')}"`;
-        }
-        return stringValue;
-      }).join(';'))
-    ].join('\n');
-    
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `products_${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
+    // Используем универсальную функцию экспорта в Excel
+    exportData(data, 'products', 'excel', null, 'Продукты');
   };
 
   const handleImport = () => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.csv';
-    input.onchange = (e) => {
+    input.accept = '.xlsx,.xls,.csv';
+    input.onchange = async (e) => {
       const file = e.target.files[0];
       if (file) {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          const csv = event.target.result;
-          const lines = csv.split('\n');
-          const headers = lines[0].split(',');
-          const data = lines.slice(1).map(line => {
-            const values = line.split(',');
-            const row = {};
-            headers.forEach((header, index) => {
-              row[header.trim()] = values[index]?.trim() || '';
-            });
-            return row;
-          });
-          console.log('Imported data:', data);
-        };
-        reader.readAsText(file);
+        try {
+          // Используем универсальную функцию импорта
+          const importedData = await importFile(file);
+          console.log('Imported data:', importedData);
+          // Здесь можно добавить логику обработки импортированных данных
+        } catch (error) {
+          console.error('Ошибка импорта:', error);
+          showNotification('Ошибка при импорте файла', 'error');
+        }
       }
     };
     input.click();
@@ -421,11 +399,9 @@ export default function Products() {
             <thead className="bg-gray">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-dark tracking-wider">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={selectedProducts.size === filteredProducts.length && filteredProducts.length > 0}
                     onChange={handleSelectAll}
-                    className="rounded border-gray-300 text-primary focus:ring-primary"
                   />
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-dark tracking-wider">
@@ -484,11 +460,9 @@ export default function Products() {
               {filteredProducts.map((product, index) => (
                 <tr key={product.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray/5'}>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={selectedProducts.has(product.id)}
                       onChange={() => handleSelectProduct(product.id)}
-                      className="rounded border-gray-300 text-primary focus:ring-primary"
                     />
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">

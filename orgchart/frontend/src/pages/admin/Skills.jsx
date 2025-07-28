@@ -8,6 +8,7 @@ import SkillGroupModal from '../../components/SkillGroupModal';
 import SkillModal from '../../components/SkillModal';
 import api from '../../services/api';
 import { showNotification } from '../../utils/notifications';
+import { exportData, importFile } from '../../utils/exportUtils';
 
 const customSelectStyles = {
   control: (provided, state) => ({
@@ -423,43 +424,20 @@ export default function Skills() {
   };
 
   const handleExport = () => {
-    try {
-      const data = filteredSkills.map(skill => ({
-        'Название': skill.name || '',
-        'Описание': skill.description || '',
-        'Тип навыка': skill.skill_type || '',
-        'Группа навыков': skill.skill_group?.name || '',
-        'Статус': skill.status || ''
-      }));
-      
-      if (data.length === 0) {
-        showNotification('Нет данных для экспорта', 'info');
-        return;
-      }
-      
-      // Экспорт с разделителем точка с запятой и экранированием
-      const csv = [
-        Object.keys(data[0]).join(';'),
-        ...data.map(row => Object.values(row).map(value => {
-          const stringValue = String(value);
-          if (stringValue.includes(';') || stringValue.includes('"') || stringValue.includes('\n')) {
-            return `"${stringValue.replace(/"/g, '""')}"`;
-          }
-          return stringValue;
-        }).join(';'))
-      ].join('\n');
-      
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `skills_${new Date().toISOString().split('T')[0]}.csv`;
-      a.click();
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Error exporting skills:', error);
-      showNotification('Ошибка при экспорте навыков', 'error');
+    const data = filteredSkills.map(skill => ({
+      'Название': skill.name || '',
+      'Описание': skill.description || '',
+      'Тип навыка': skill.skill_type || '',
+      'Группа навыков': skill.skill_group?.name || '',
+      'Статус': skill.status || ''
+    }));
+    
+    if (data.length === 0) {
+      showNotification('Нет данных для экспорта', 'info');
+      return;
     }
+    
+    exportData(data, 'skills', 'excel');
   };
 
   // Функция для парсинга CSV строки с учетом кавычек
@@ -670,6 +648,34 @@ export default function Skills() {
     }
   };
 
+  const handleDownloadTemplate = () => {
+    const templateData = [
+      {
+        'Название': 'JavaScript',
+        'Описание': 'Язык программирования для веб-разработки',
+        'Тип навыка': 'hard',
+        'Группа навыков': 'Программирование',
+        'Статус': 'active'
+      },
+      {
+        'Название': 'React',
+        'Описание': 'JavaScript библиотека для создания пользовательских интерфейсов',
+        'Тип навыка': 'hard',
+        'Группа навыков': 'Программирование',
+        'Статус': 'active'
+      },
+      {
+        'Название': 'Коммуникация',
+        'Описание': 'Умение эффективно общаться с людьми',
+        'Тип навыка': 'soft',
+        'Группа навыков': 'Коммуникация',
+        'Статус': 'active'
+      }
+    ];
+    
+    exportData(templateData, 'skills_template', 'excel');
+  };
+
   const getTypeColor = (type) => {
     switch (type) {
       case 'hard':
@@ -731,6 +737,13 @@ export default function Skills() {
           >
             <Upload className="w-4 h-4" />
             Импорт
+          </button>
+          <button
+            onClick={handleDownloadTemplate}
+            className="flex items-center gap-2 px-4 py-2 border border-gray/20 text-gray-700 rounded-[8px] font-medium text-sm transition hover:bg-gray/10"
+          >
+            <FileText className="w-4 h-4" />
+            Шаблон
           </button>
           <button
             onClick={handleExport}

@@ -35,7 +35,7 @@ export default function ProfileMenu() {
   const [loading, setLoading] = useState(true);
   const menuRef = useRef(null);
   const location = useLocation();
-  const { userData, logout } = useAuth();
+  const { userData, logout, loading: authLoading } = useAuth();
   
   const isProfilePage = location.pathname.startsWith('/account/');
 
@@ -75,6 +75,12 @@ export default function ProfileMenu() {
       }
     };
 
+    // Если AuthContext еще загружается, ждем
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
+
     loadUser();
     
     // Добавляем обработчик события обновления аватара
@@ -87,7 +93,7 @@ export default function ProfileMenu() {
     return () => {
       window.removeEventListener('avatar-updated', handleAvatarUpdate);
     };
-  }, [userData]);
+  }, [userData, authLoading]);
 
   // Получаем текущую активную роль
   const getCurrentRole = () => {
@@ -140,7 +146,7 @@ export default function ProfileMenu() {
     }
   };
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
       <div className="flex items-center gap-3 py-[0.3rem] pl-[0.3rem] pr-2 lg:pr-4 rounded-[25px] min-w-[50px] lg:min-w-[180px]">
         <div className="w-[40px] h-[40px] rounded-full bg-gray-200 animate-pulse"></div>

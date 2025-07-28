@@ -265,6 +265,14 @@ class ApiService {
             requestData: options.body,
             responseData: errorData
           });
+          
+          // Создаем специальную ошибку для 500 статуса
+          const serverError = new Error('Internal Server Error');
+          serverError.status = 500;
+          serverError.isServerError = true;
+          serverError.endpoint = endpoint;
+          serverError.responseData = errorData;
+          throw serverError;
         }
         
         throw error;
@@ -1199,7 +1207,10 @@ class ApiService {
   }
 
   async assignAchievementToEmployee(data) {
-    return this.request('/api/achievements/assign', 'POST', data);
+    return this.request('/api/achievements/assign', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
   }
 
   async removeAchievementFromEmployee(employeeId, achievementId) {

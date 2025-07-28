@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  Columns2, ListFilter, Users, Calendar, Shield, Package, Award, User, Search, Trash2, SortAsc, SortDesc, Cake, Plane, Clock, HandMetal, Heart, Gift, Archive, Building, ArrowLeft, Building2, Snowflake, Flower2, Sun, Leaf, Star, Crown, UserCheck, Baby, GraduationCap, FileText, Trophy, ChevronDown
+  Columns2, ListFilter, Users, Calendar, Shield, Package, Award, User, Search, Trash2, SortAsc, SortDesc, Cake, Plane, Clock, HandMetal, Heart, Gift, Archive, Building, ArrowLeft, Building2, Snowflake, Flower2, Sun, Leaf, Star, Crown, UserCheck, Baby, GraduationCap, FileText, Trophy, ChevronDown, Edit
 } from 'lucide-react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import api from '../services/api';
@@ -138,13 +138,15 @@ export default function Structure() {
         setLoading(true);
         setError(null);
         
-        const [employeesResponse, departmentsResponse] = await Promise.all([
+        const [employeesResponse, departmentsResponse, vacationsResponse] = await Promise.all([
           api.getEmployees(),
-          api.getDepartments()
+          api.getDepartments(),
+          api.request('/api/vacations')
         ]);
         
         const employees = employeesResponse.data || employeesResponse || [];
         const departments = departmentsResponse.departments || departmentsResponse.data || departmentsResponse || [];
+        const vacations = vacationsResponse.vacations || vacationsResponse || [];
         
         // Обрабатываем данные сотрудников для совместимости с фронтендом
         const processedEmployees = employees.map(emp => ({
@@ -157,17 +159,27 @@ export default function Structure() {
           department_id: emp.department_id,
           roleInDept: emp.department_role,
           competencies: emp.competencies ? normalizeCompetencies(emp.competencies) : [],
-          vacations: emp.vacations || [],
+          vacations: vacations.filter(v => v.employee_id === emp.id) || [],
+          wishlist: emp.wishlist_url || emp.wishlist,
           status: emp.status || 'active'
         }));
         
         setAllEmployees(processedEmployees);
         setDepartments(departments);
         
+        // Временная отладка для сотрудника с ID 1
+        const employee1 = processedEmployees.find(emp => emp.id === 1);
+        if (employee1) {
+          console.log('Employee 1 data:', employee1);
+          console.log('Employee 1 wishlist:', employee1.wishlist);
+          console.log('Employee 1 wishlist_url:', employee1.wishlist_url);
+        }
+        
         // Загружаем рейтинг данные если нужно
         if (urlView === 'rating') {
           try {
             const ratingResponse = await api.request('/api/tokens/top');
+            console.log('Rating data loaded:', ratingResponse);
             setRatingData(ratingResponse || []);
           } catch (ratingError) {
             console.warn('Failed to load rating data:', ratingError);
@@ -256,11 +268,13 @@ export default function Structure() {
       filtered = filtered.sort((a, b) => (a.department_id || 0) - (b.department_id || 0));
     } else if (sort === 'rating') {
       // Сортируем по рейтингу
+      console.log('Sorting by rating, ratingData:', ratingData);
       filtered = filtered.sort((a, b) => {
         const aRating = ratingData.find(r => r.id === a.id);
         const bRating = ratingData.find(r => r.id === b.id);
         const aPoints = aRating ? aRating.totalPoints || 0 : 0;
         const bPoints = bRating ? bRating.totalPoints || 0 : 0;
+        console.log(`Comparing ${a.first_name} ${a.last_name} (${aPoints}) vs ${b.first_name} ${b.last_name} (${bPoints})`);
         return bPoints - aPoints; // По убыванию
       });
     }
@@ -515,10 +529,13 @@ export default function Structure() {
         <div className="flex flex-col gap-6">
           {groupEmployees(filteredEmployees, sort, ratingData).map(([group, emps]) => (
             <div key={group}>
-              <div className={`text-lg font-bold mb-2 mt-2 p-2 rounded-[8px] text-blue-600 inline-block`}>{group}</div>
-              <div className="flex gap-2 sm:gap-4 overflow-x-auto pb-2 items-stretch">
+              <div className={`text-lg font-bold mb-2 mt-2 p-2 rounded-[8px] text-blue-600 inline-block flex items-center gap-2`}>
+                {group}
+                <span className="text-sm font-normal text-gray-500">({emps.length})</span>
+              </div>
+              <div className="flex gap-2 sm:gap-4 flex-wrap pb-2 items-stretch">
                 {emps.map(emp => (
-                  <div key={emp.id} className="w-[200px] sm:w-[220px] flex-shrink-0">
+                  <div key={emp.id} className="w-[200px] sm:w-[220px]">
                     <EmployeeCard employee={emp} view={sort} vacationIntervals={[]} ratingData={ratingData} />
                   </div>
                 ))}
@@ -531,10 +548,13 @@ export default function Structure() {
         <div className="flex flex-col gap-6">
           {groupEmployees(filteredEmployees, sort, ratingData).map(([group, emps]) => (
             <div key={group}>
-              <div className={`text-lg font-bold mb-2 mt-2 p-2 rounded-[8px] text-purple-600 inline-block`}>{group}</div>
-              <div className="flex gap-2 sm:gap-4 overflow-x-auto pb-2 items-stretch">
+              <div className={`text-lg font-bold mb-2 mt-2 p-2 rounded-[8px] text-purple-600 inline-block flex items-center gap-2`}>
+                {group}
+                <span className="text-sm font-normal text-gray-500">({emps.length})</span>
+              </div>
+              <div className="flex gap-2 sm:gap-4 flex-wrap pb-2 items-stretch">
                 {emps.map(emp => (
-                  <div key={emp.id} className="w-[200px] sm:w-[220px] flex-shrink-0">
+                  <div key={emp.id} className="w-[200px] sm:w-[220px]">
                     <EmployeeCard employee={emp} view={sort} vacationIntervals={[]} ratingData={ratingData} />
                   </div>
                 ))}
@@ -567,10 +587,11 @@ export default function Structure() {
                 <div className={`text-lg font-bold mb-2 mt-2 p-2 rounded-[8px] ${seasonColors[season]} flex items-center gap-2 inline-block`}>
                   <span className="text-xl">{seasonIcons[season]}</span>
                   {month}
+                  <span className="text-sm font-normal text-gray-500">({emps.length})</span>
                 </div>
-                <div className="flex gap-2 sm:gap-4 overflow-x-auto pb-2 items-stretch">
+                <div className="flex gap-2 sm:gap-4 flex-wrap pb-2 items-stretch">
                   {emps.map(emp => (
-                    <div key={emp.id} className="w-[200px] sm:w-[220px] flex-shrink-0">
+                    <div key={emp.id} className="w-[200px] sm:w-[220px]">
                       <EmployeeCard employee={emp} view={sort} vacationIntervals={[]} ratingData={ratingData} />
                     </div>
                   ))}
@@ -604,8 +625,9 @@ export default function Structure() {
                 <div className={`text-lg font-bold mb-2 mt-2 p-2 rounded-[8px] ${seasonColors[season]} flex items-center gap-2 inline-block`}>
                   <span className="text-xl">{seasonIcons[season]}</span>
                   {month}
+                  <span className="text-sm font-normal text-gray-500">({emps.length})</span>
                 </div>
-                <div className="flex gap-2 sm:gap-4 overflow-x-auto pb-2 items-stretch">
+                <div className="flex gap-2 sm:gap-4 flex-wrap pb-2 items-stretch">
                   {emps.map(emp => {
                     // Найти все отпуска сотрудника в этом месяце
                     const intervals = (emp.vacations || [])
@@ -616,7 +638,7 @@ export default function Structure() {
                         return start === end ? start : `${start}-${end}`;
                       });
                     return (
-                      <div key={emp.id} className="w-[200px] sm:w-[220px] flex-shrink-0">
+                      <div key={emp.id} className="w-[200px] sm:w-[220px]">
                         <EmployeeCard employee={emp} view={sort} vacationIntervals={intervals} ratingData={ratingData} />
                       </div>
                     );
@@ -649,10 +671,11 @@ export default function Structure() {
                 <div className={`text-lg font-bold mb-2 mt-2 p-2 rounded-[8px] ${groupColors[group]} flex items-center gap-2 inline-block`}>
                   {groupIcons[group]}
                   {group}
+                  <span className="text-sm font-normal text-gray-500">({emps.length})</span>
                 </div>
-                <div className="flex gap-2 sm:gap-4 overflow-x-auto pb-2 items-stretch">
+                <div className="flex gap-2 sm:gap-4 flex-wrap pb-2 items-stretch">
                   {emps.map(emp => (
-                    <div key={emp.id} className="w-[200px] sm:w-[220px] flex-shrink-0">
+                    <div key={emp.id} className="w-[200px] sm:w-[220px]">
                       <EmployeeCard employee={emp} view={sort} vacationIntervals={[]} ratingData={ratingData} />
                     </div>
                   ))}
@@ -669,8 +692,20 @@ export default function Structure() {
 }
 
 function DepartmentCard({ dept, search, status, view, allEmployees, ratingData = [] }) {
+  const navigate = useNavigate();
+  const { userData, activeRole } = useAuth();
+  const { hasAdminMenu } = useRole();
+  
   // Получаем сотрудников отдела из обработанных данных
   const deptEmployees = allEmployees.filter(e => e.department_id === dept.id);
+  
+  // Определяем, есть ли права на редактирование отделов
+  const hasDepartmentEditRights = hasAdminMenu && userData?.adminRoles?.some(role => 
+    role.id.toString() === activeRole && (
+      role.name === 'Главный администратор' || 
+      (role.permissions && role.permissions.includes('departments'))
+    )
+  );
 
   // Фильтрация сотрудников отдела
   const employeesFiltered = deptEmployees.filter(e =>
@@ -724,7 +759,20 @@ function DepartmentCard({ dept, search, status, view, allEmployees, ratingData =
   }
 
   return (
-    <div className="flex flex-col md:flex-row bg-transparent rounded-[15px] border border-gray/50 p-2 sm:p-[25px] gap-2 sm:gap-[50px] w-full items-stretch min-h-[180px]">
+    <div className="flex flex-col md:flex-row bg-transparent rounded-[15px] border border-gray/50 p-2 sm:p-[25px] gap-2 sm:gap-[50px] w-full items-stretch min-h-[180px] relative group">
+      {/* Иконка редактирования для администраторов */}
+      {hasDepartmentEditRights && (
+        <div 
+          className="absolute top-2 right-2 z-10 bg-white/90 backdrop-blur-sm rounded-full p-1.5 shadow-md hover:bg-white transition-colors opacity-0 group-hover:opacity-100"
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate(`/admin/departments?edit=${dept.id}`);
+          }}
+          title="Редактировать отдел"
+        >
+          <Edit className="w-4 h-4 text-gray-600 hover:text-primary" />
+        </div>
+      )}
       {/* Левая часть */}
       <div className="flex-1 min-w-0 sm:min-w-[220px] md:max-w-[510px] flex flex-col gap-1 sm:gap-2 justify-center h-full">
         <div className="flex items-center gap-2 mb-1">
@@ -766,7 +814,18 @@ function DepartmentCard({ dept, search, status, view, allEmployees, ratingData =
 
 function EmployeeCard({ employee, view, vacationIntervals, ratingData = [] }) {
   const navigate = useNavigate();
+  const { userData, activeRole } = useAuth();
+  const { hasAdminMenu } = useRole();
+  
   if (!employee) return <div className="p-4 text-center text-gray-500">Нет данных о сотруднике</div>;
+  
+  // Определяем, есть ли права на редактирование сотрудников
+  const hasEmployeeEditRights = hasAdminMenu && userData?.adminRoles?.some(role => 
+    role.id.toString() === activeRole && (
+      role.name === 'Главный администратор' || 
+      (role.permissions && role.permissions.includes('employees'))
+    )
+  );
   
   const handleClick = () => {
     if (employee.id) navigate(`/employee/${employee.id}`);
@@ -776,6 +835,16 @@ function EmployeeCard({ employee, view, vacationIntervals, ratingData = [] }) {
   const employeeRating = ratingData.find(r => r.id === employee.id);
   const totalPoints = employeeRating ? employeeRating.totalPoints || 0 : 0;
   const achievements = employeeRating ? employeeRating.achievements || 0 : 0;
+  
+  // Отладочная информация для рейтинга
+  if (view === 'rating') {
+    console.log(`Employee ${employee.id} (${employee.first_name} ${employee.last_name}):`, {
+      employeeRating,
+      totalPoints,
+      achievements,
+      ratingDataLength: ratingData.length
+    });
+  }
 
   // Определяем уровень рейтинга
   const getLevel = (points) => {
@@ -790,10 +859,23 @@ function EmployeeCard({ employee, view, vacationIntervals, ratingData = [] }) {
 
   return (
     <div
-      className="flex flex-col items-center rounded-[15px] p-2 sm:p-4 pt-8 sm:pt-8 w-full min-h-[280px] max-w-full border border-gray/50 transition hover:bg-gray/30 cursor-pointer h-auto flex-grow"
+      className="flex flex-col items-center rounded-[15px] p-2 sm:p-4 pt-8 sm:pt-8 w-full min-h-[280px] max-w-full border border-gray/50 transition hover:bg-gray/30 cursor-pointer h-auto flex-grow relative group"
       style={{ display: 'flex', flexDirection: 'column', height: '100%' }}
       onClick={handleClick}
     >
+      {/* Иконка редактирования для администраторов */}
+      {hasEmployeeEditRights && (
+        <div 
+          className="absolute top-2 right-2 z-10 bg-white/90 backdrop-blur-sm rounded-full p-1.5 shadow-md hover:bg-white transition-colors opacity-0 group-hover:opacity-100"
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate(`/admin/employees?edit=${employee.id}`);
+          }}
+          title="Редактировать сотрудника"
+        >
+          <Edit className="w-4 h-4 text-gray-600 hover:text-primary" />
+        </div>
+      )}
       <Avatar
         src={employee.avatar}
         name={`${employee.first_name || ''} ${employee.last_name || ''}`.trim() || employee.full_name || employee.name}
@@ -825,11 +907,17 @@ function EmployeeCard({ employee, view, vacationIntervals, ratingData = [] }) {
       )}
       {view === 'birthdays' && (
         <div className="text-xs text-gray-700 text-center mb-2 min-h-[16px] flex items-center justify-center">
-          {employee.birth ? `ДР: ${formatDate(employee.birth)}` : 'Нет данных о дате рождения'}
-          {employee.wishlist && (
+          {employee.birth ? formatDate(employee.birth) : 'Нет данных о дате рождения'}
+          {employee.wishlist && employee.wishlist.trim() !== '' && (
             <a href={employee.wishlist} target="_blank" rel="noopener noreferrer" className="ml-2 text-primary flex items-center align-middle" onClick={e => e.stopPropagation()} title="Вишлист" style={{lineHeight: 1}}>
               <Gift className="w-4 h-4 inline align-middle" />
             </a>
+          )}
+          {/* Временная отладка */}
+          {employee.id === 1 && (
+            <div className="text-xs text-red-500">
+              Debug: wishlist="{employee.wishlist}", wishlist_url="{employee.wishlist_url}"
+            </div>
           )}
         </div>
       )}
@@ -911,10 +999,15 @@ function groupEmployees(employees, sort, ratingData = []) {
     employees.forEach(e => {
       if (!e.vacations?.length) return;
       e.vacations.forEach(v => {
+        if (!v.start) return;
+        try {
         const m = Number(v.start.split('-')[1]) - 1;
         const month = months[m] || 'Без даты';
         if (!groups[month]) groups[month] = [];
         if (!groups[month].includes(e)) groups[month].push(e);
+        } catch (error) {
+          console.warn('Invalid vacation start date:', v.start);
+        }
       });
     });
     return months.map(m => [m, groups[m] || []]).filter(([,arr])=>arr.length);

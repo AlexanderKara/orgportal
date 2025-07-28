@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Award, Star, Heart, Users, Zap, Calendar, Crown, Image, Shuffle, Lock, Save, ChevronLeft, ChevronRight } from 'lucide-react';
 import { showNotification } from '../../utils/notifications';
 import api from '../../services/api';
+import Checkbox from '../ui/Checkbox';
 
 const iconOptions = [
   { value: 'award', label: 'Награда', icon: <Award className="w-4 h-4" /> },
@@ -103,9 +104,9 @@ export default function AchievementModal({ isOpen, onClose, onSubmit, achievemen
     
     // Загружаем данные с обработкой ошибок
     Promise.all([
-      loadImageFolders().catch(err => console.error('Error loading image folders:', err)),
-      loadTokenTypes().catch(err => console.error('Error loading token types:', err)),
-      loadDepartments().catch(err => console.error('Error loading departments:', err))
+        loadImageFolders().catch(() => {}),
+        loadTokenTypes().catch(() => {}),
+        loadDepartments().catch(() => {})
     ]);
   }, [achievement, isOpen]);
 
@@ -139,7 +140,7 @@ export default function AchievementModal({ isOpen, onClose, onSubmit, achievemen
         setAvailableImages(response.images);
       }
     } catch (error) {
-      console.error('Error loading image folders:', error);
+      // Ошибка загрузки папок изображений
     }
   };
 
@@ -172,7 +173,6 @@ export default function AchievementModal({ isOpen, onClose, onSubmit, achievemen
         'feedback_given', 'feedback_received'
       ]);
     } catch (error) {
-      console.error('Error loading token types:', error);
       // Fallback к базовым типам
       setTokenTypes(['login', 'profile_update', 'task_complete', 'team_help', 'innovation', 'leadership', 'mentoring', 'training', 'event_participation', 'feedback_given', 'feedback_received']);
     }
@@ -206,7 +206,6 @@ export default function AchievementModal({ isOpen, onClose, onSubmit, achievemen
         'Support', 'Development', 'Design', 'Analytics'
       ]);
     } catch (error) {
-      console.error('Error loading departments:', error);
       // Fallback к базовым отделам
       setDepartments(['IT', 'HR', 'Marketing', 'Sales', 'Finance', 'Operations', 'Support', 'Development', 'Design', 'Analytics']);
     }
@@ -243,7 +242,6 @@ export default function AchievementModal({ isOpen, onClose, onSubmit, achievemen
         }
       }
     } catch (error) {
-      console.error('Error loading images from folder:', error);
       setAvailableImages([]);
     } finally {
       setLoadingImages(false);
@@ -289,7 +287,6 @@ export default function AchievementModal({ isOpen, onClose, onSubmit, achievemen
       await onSubmit(formData);
       onClose();
     } catch (error) {
-      console.error('Error saving achievement:', error);
       showNotification('Ошибка сохранения достижения', 'error');
     } finally {
       setSaving(false);
@@ -583,15 +580,11 @@ export default function AchievementModal({ isOpen, onClose, onSubmit, achievemen
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Статус
                   </label>
-                  <label className="flex items-center gap-2 h-10 px-3 py-2">
-                    <input
-                      type="checkbox"
+                  <Checkbox
                       checked={formData.isActive}
                       onChange={(e) => handleChange('isActive', e.target.checked)}
-                      className="rounded border-gray-300 text-primary focus:ring-primary"
+                    label="Активный"
                     />
-                    <span className="text-sm font-medium text-gray-700">Активный</span>
-                  </label>
                 </div>
               </div>
             </div>
@@ -676,9 +669,8 @@ export default function AchievementModal({ isOpen, onClose, onSubmit, achievemen
                     { value: 'november', label: 'Ноябрь' },
                     { value: 'december', label: 'Декабрь' }
                   ].map(month => (
-                    <label key={month.value} className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
+                    <Checkbox
+                      key={month.value}
                         checked={formData.criteria?.months?.includes(month.value) || false}
                         onChange={(e) => {
                           const currentMonths = formData.criteria?.months || [];
@@ -690,10 +682,8 @@ export default function AchievementModal({ isOpen, onClose, onSubmit, achievemen
                             months: newMonths
                           });
                         }}
-                        className="rounded border-gray-300 text-primary focus:ring-primary"
+                      label={month.label}
                       />
-                      <span className="text-sm text-gray-700">{month.label}</span>
-                    </label>
                   ))}
                 </div>
               </div>
@@ -705,9 +695,8 @@ export default function AchievementModal({ isOpen, onClose, onSubmit, achievemen
                 </label>
                 <div className="space-y-2 max-h-32 overflow-y-auto border border-gray/20 rounded-[8px] p-3">
                   {tokenTypes.map(tokenType => (
-                    <label key={tokenType} className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
+                    <Checkbox
+                      key={tokenType}
                         checked={formData.criteria?.tokenTypes?.includes(tokenType) || false}
                         onChange={(e) => {
                           const currentTypes = formData.criteria?.tokenTypes || [];
@@ -719,10 +708,8 @@ export default function AchievementModal({ isOpen, onClose, onSubmit, achievemen
                             tokenTypes: newTypes
                           });
                         }}
-                        className="rounded border-gray-300 text-primary focus:ring-primary"
+                      label={tokenType}
                       />
-                      <span className="text-sm text-gray-700">{tokenType}</span>
-                    </label>
                   ))}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
@@ -758,9 +745,8 @@ export default function AchievementModal({ isOpen, onClose, onSubmit, achievemen
                 </label>
                 <div className="space-y-2 max-h-32 overflow-y-auto border border-gray/20 rounded-[8px] p-3">
                   {departments.map(department => (
-                    <label key={department} className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
+                    <Checkbox
+                      key={department}
                         checked={formData.criteria?.departments?.includes(department) || false}
                         onChange={(e) => {
                           const currentDepts = formData.criteria?.departments || [];
@@ -772,10 +758,8 @@ export default function AchievementModal({ isOpen, onClose, onSubmit, achievemen
                             departments: newDepts
                           });
                         }}
-                        className="rounded border-gray-300 text-primary focus:ring-primary"
+                      label={department}
                       />
-                      <span className="text-sm text-gray-700">{department}</span>
-                    </label>
                   ))}
                 </div>
               </div>

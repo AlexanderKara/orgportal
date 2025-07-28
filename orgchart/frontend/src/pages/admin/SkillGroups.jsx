@@ -7,6 +7,7 @@ import Select from 'react-select';
 import SkillGroupModal from '../../components/SkillGroupModal';
 import api from '../../services/api';
 import { showNotification } from '../../utils/notifications';
+import { exportData, importFile } from '../../utils/exportUtils';
 
 const customSelectStyles = {
   control: (provided, state) => ({
@@ -228,25 +229,12 @@ export default function SkillGroups() {
       'Статус': group.status || ''
     }));
     
-    // Экспорт с разделителем точка с запятой и экранированием
-    const csv = [
-      Object.keys(data[0]).join(';'),
-      ...data.map(row => Object.values(row).map(value => {
-        const stringValue = String(value);
-        if (stringValue.includes(';') || stringValue.includes('"') || stringValue.includes('\n')) {
-          return `"${stringValue.replace(/"/g, '""')}"`;
-        }
-        return stringValue;
-      }).join(';'))
-    ].join('\n');
+    if (data.length === 0) {
+      showNotification('Нет данных для экспорта', 'info');
+      return;
+    }
     
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `skill-groups_${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
+    exportData(data, 'skill_groups', 'excel');
   };
 
   // Функция для парсинга CSV строки с учетом кавычек
@@ -444,6 +432,34 @@ export default function SkillGroups() {
     }
   };
 
+  const handleDownloadTemplate = () => {
+    const templateData = [
+      {
+        'Название': 'Программирование',
+        'Описание': 'Группа навыков для программистов',
+        'Тип навыка': 'hard',
+        'Количество навыков': 5,
+        'Статус': 'active'
+      },
+      {
+        'Название': 'Коммуникация',
+        'Описание': 'Группа навыков для коммуникации',
+        'Тип навыка': 'soft',
+        'Количество навыков': 3,
+        'Статус': 'active'
+      },
+      {
+        'Название': 'Спорт',
+        'Описание': 'Группа навыков для спортивных хобби',
+        'Тип навыка': 'hobby',
+        'Количество навыков': 2,
+        'Статус': 'active'
+      }
+    ];
+    
+    exportData(templateData, 'skill_groups_template', 'excel');
+  };
+
   const getTypeColor = (type) => {
     switch (type) {
       case 'hard':
@@ -488,6 +504,13 @@ export default function SkillGroups() {
           >
             <Upload className="w-4 h-4" />
             Импорт
+          </button>
+          <button
+            onClick={handleDownloadTemplate}
+            className="flex items-center gap-2 px-4 py-2 border border-gray/20 text-gray-700 rounded-[8px] font-medium text-sm transition hover:bg-gray/10"
+          >
+            <FileText className="w-4 h-4" />
+            Шаблон
           </button>
           <button
             onClick={handleExport}

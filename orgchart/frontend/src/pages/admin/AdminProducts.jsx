@@ -9,8 +9,10 @@ import ParticipantsModal from '../../components/ParticipantsModal';
 import RelatedProductsModal from '../../components/RelatedProductsModal';
 import VersionsModal from '../../components/VersionsModal';
 import Avatar from '../../components/ui/Avatar';
+import Checkbox from '../../components/ui/Checkbox';
 import api from '../../services/api';
 import { showNotification } from '../../utils/notifications';
+import { exportData, importFile } from '../../utils/exportUtils';
 
 // Определения для фильтров
 const productTypes = [
@@ -266,60 +268,73 @@ export default function AdminProducts() {
     setEditingCell(null);
   };
 
+  // Функция для форматирования даты в формат DD.MM.YYYY
+  const formatDateForExport = (dateString) => {
+    if (!dateString || dateString === '') {
+      return '';
+    }
+    
+    try {
+      // Если дата в формате ISO (2025-07-13T00:00:00.000Z)
+      if (dateString.includes('T')) {
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return '';
+        
+        const day = date.getDate().toString().padStart(2, '0');
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const year = date.getFullYear();
+        
+        return `${day}.${month}.${year}`;
+      }
+      
+      // Если дата в формате YYYY-MM-DD
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+        const [year, month, day] = dateString.split('-');
+        return `${day}.${month}.${year}`;
+      }
+      
+      // Если дата уже в формате DD.MM.YYYY
+      if (/^\d{1,2}\.\d{1,2}\.\d{4}$/.test(dateString)) {
+        return dateString;
+      }
+      
+      return dateString;
+    } catch (error) {
+      console.error('Ошибка форматирования даты:', error);
+      return dateString;
+    }
+  };
+
   const handleExport = () => {
     const data = filteredProducts.map(product => ({
-      'Название': product.name,
-      'Описание': product.description,
-      'Тип': product.type,
-      'Категория': product.category,
-      'Статус': product.status,
-      'Дата создания': product.created_at
+      'Название': product.name || '',
+      'Описание': product.description || '',
+      'Тип': getTypeText(product.type) || '',
+      'Категория': getCategoryText(product.category) || '',
+      'Статус': getStatusText(product.status) || '',
+      'Дата создания': formatDateForExport(product.created_at)
     }));
     
-    // Экспорт с разделителем точка с запятой и экранированием
-    const csv = [
-      Object.keys(data[0]).join(';'),
-      ...data.map(row => Object.values(row).map(value => {
-        const stringValue = String(value);
-        if (stringValue.includes(';') || stringValue.includes('"') || stringValue.includes('\n')) {
-          return `"${stringValue.replace(/"/g, '""')}"`;
-        }
-        return stringValue;
-      }).join(';'))
-    ].join('\n');
-    
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `admin_products_${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
+    // Используем универсальную функцию экспорта в Excel
+    exportData(data, 'admin-products', 'excel', null, 'Продукты');
   };
 
   const handleImport = () => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.csv';
-    input.onchange = (e) => {
+    input.accept = '.xlsx,.xls,.csv';
+    input.onchange = async (e) => {
       const file = e.target.files[0];
       if (file) {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          const csv = event.target.result;
-          const lines = csv.split('\n');
-          const headers = lines[0].split(',');
-          const data = lines.slice(1).map(line => {
-            const values = line.split(',');
-            const row = {};
-            headers.forEach((header, index) => {
-              row[header.trim()] = values[index]?.trim() || '';
-            });
-            return row;
-          });
-          console.log('Imported data:', data);
-        };
-        reader.readAsText(file);
+        try {
+          // Используем универсальную функцию импорта
+          const importedData = await importFile(file);
+          console.log('Imported data:', importedData);
+          // Здесь можно добавить логику обработки импортированных данных
+        } catch (error) {
+          console.error('Ошибка импорта:', error);
+          showNotification('Ошибка при импорте файла', 'error');
+        }
       }
     };
     input.click();
@@ -567,11 +582,9 @@ export default function AdminProducts() {
               <tr>
                 <th className="px-6 py-4 text-left">
                   <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={selectedProducts.size === filteredProducts.length && filteredProducts.length > 0}
                       onChange={handleSelectAll}
-                      className="rounded border-gray/20 text-primary focus:ring-primary"
                     />
                   </div>
                 </th>
@@ -664,11 +677,9 @@ export default function AdminProducts() {
               {filteredProducts.map((product) => (
                 <tr key={product.id} className="hover:bg-gray/5">
                   <td className="px-6 py-4">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={selectedProducts.has(product.id)}
                       onChange={() => handleSelectProduct(product.id)}
-                      className="rounded border-gray/20 text-primary focus:ring-primary"
                     />
                   </td>
                   <td 

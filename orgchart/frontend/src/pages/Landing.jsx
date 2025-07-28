@@ -132,7 +132,7 @@ const DashboardView = ({ employees, products, vacations, topRating = [] }) => {
             Топ рейтинга компании
           </h3>
           <button 
-            onClick={() => window.location.href = '/account/rating'}
+            onClick={() => window.location.href = '/structure/rating'}
             className="text-primary hover:text-primary/80 text-sm font-medium"
           >
             Посмотреть всех →
@@ -150,8 +150,14 @@ const DashboardView = ({ employees, products, vacations, topRating = [] }) => {
                 {index + 1}
               </div>
               <div className="ml-3 flex-1">
-                <p className="font-medium text-gray-900">{emp.name}</p>
-                <p className="text-sm text-gray-600">{emp.position}</p>
+                <p className="font-medium text-gray-900">
+                  {emp.first_name && emp.last_name 
+                    ? `${emp.first_name} ${emp.last_name}` 
+                    : emp.name || 'Сотрудник'}
+                </p>
+                <p className="text-sm text-gray-600">
+                  {emp.department?.name || emp.position || 'Отдел не указан'}
+                </p>
               </div>
               <div className="text-right">
                 <div className="text-2xl font-bold text-gray-900">

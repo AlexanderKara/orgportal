@@ -57,7 +57,7 @@ export default function Auth() {
         
         if (data.success) {
           localStorage.setItem('token', data.token);
-          authLogin(data.token);
+          await authLogin(data.token, data.employee || data.user);
           navigate('/home');
         } else {
           showNotification(data.message || 'Ошибка авторизации через Telegram', 'error');
@@ -306,7 +306,7 @@ export default function Auth() {
           localStorage.setItem('rememberedUser', JSON.stringify(rememberedUser));
         }
         
-        authLogin(response.token);
+        await authLogin(response.token, response.employee || response.user);
         navigate('/home');
       } else {
         showNotification(response.message || 'Неверный код', 'error');

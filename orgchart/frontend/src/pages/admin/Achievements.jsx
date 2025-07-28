@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Plus, Edit, Trash2, Eye, EyeOff, Award, Star, Heart, Users, Zap, Calendar, Crown, Search, Filter, Shuffle, X, Trophy, Medal, Gem, Target, Shield } from 'lucide-react';
 import { showNotification } from '../../utils/notifications';
 import { getProportionalPadding } from '../../utils/padding';
 import api from '../../services/api';
 import ViewSwitcher from '../../components/ui/ViewSwitcher';
+import Pagination from '../../components/ui/Pagination';
 import AchievementModal from '../../components/admin/AchievementModal';
 import AssignAchievementModal from '../../components/admin/AssignAchievementModal';
 
@@ -36,8 +38,10 @@ const getTypeTranslation = (type) => {
   }
 };
 
-export default function Achievements() {
-  const [activeTab, setActiveTab] = useState('types'); // 'types' или 'employees'
+export default function Achievements({ defaultView = 'types' }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState(defaultView); // 'types' или 'employees'
   
   // Проверяем токен при загрузке компонента
   useEffect(() => {
@@ -46,6 +50,27 @@ export default function Achievements() {
       showNotification('Необходима авторизация', 'error');
     }
   }, []);
+  
+  // Обработчик изменения представления
+  const handleViewChange = (viewId) => {
+    setActiveTab(viewId);
+    // Обновляем URL в зависимости от выбранного представления
+    if (viewId === 'types') {
+      navigate('/admin/achievements/types');
+    } else if (viewId === 'employees') {
+      navigate('/admin/achievements/employees');
+    }
+  };
+  
+  // Синхронизация с URL при загрузке
+  useEffect(() => {
+    const path = location.pathname;
+    if (path.includes('/achievements/types')) {
+      setActiveTab('types');
+    } else if (path.includes('/achievements/employees')) {
+      setActiveTab('employees');
+    }
+  }, [location.pathname]);
   
   // Состояние для типов достижений
   const [achievements, setAchievements] = useState([]);
@@ -56,15 +81,22 @@ export default function Achievements() {
   // Состояние для достижений сотрудников
   const [employees, setEmployees] = useState([]);
   const [employeeAchievements, setEmployeeAchievements] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedFilter, setSelectedFilter] = useState('all');
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [employeesLoading, setEmployeesLoading] = useState(true);
 
-  // Фильтры для типов достижений
+  // Состояние поиска и фильтров для сотрудников
+  const [employeesSearchTerm, setEmployeesSearchTerm] = useState('');
+  const [employeesSelectedFilter, setEmployeesSelectedFilter] = useState('all');
+
+  // Состояние поиска и фильтров для типов достижений
+  const [typesSearchTerm, setTypesSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+
+  // Состояние пагинации для сотрудников
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // Определяем представления для ViewSwitcher
   const views = [
@@ -112,13 +144,6 @@ export default function Achievements() {
       
       setAchievements(data);
     } catch (error) {
-      console.error('Error loading achievements:', error);
-      console.error('Error details:', {
-        message: error.message,
-        status: error.status,
-        response: error.response
-      });
-      
       if (error.status === 401) {
         showNotification('Необходима авторизация', 'error');
       } else if (error.status === 403) {
@@ -165,11 +190,7 @@ export default function Achievements() {
       setEmployees(employeesData);
       setAchievements(achievementsData);
       
-      // Отладочная информация
-      console.log('Employees data structure:', employeesData.slice(0, 2));
-      if (employeesData.length > 0) {
-        console.log('First employee data:', employeesData[0]);
-      }
+
       
       // Загружаем достижения для каждого сотрудника
       const employeeAchievementsPromises = employeesData.map(employee => 
@@ -198,7 +219,6 @@ export default function Achievements() {
       
       setEmployeeAchievements(employeeAchievementsMap);
     } catch (error) {
-      console.error('Error loading employees data:', error);
       showNotification('Ошибка загрузки данных сотрудников', 'error');
     } finally {
       setEmployeesLoading(false);
@@ -227,7 +247,6 @@ export default function Achievements() {
       setShowModal(false);
       loadAchievements();
     } catch (error) {
-      console.error('Error saving achievement:', error);
       showNotification('Ошибка сохранения достижения', 'error');
     }
   };
@@ -239,7 +258,6 @@ export default function Achievements() {
         showNotification('Достижение удалено', 'success');
         loadAchievements();
       } catch (error) {
-        console.error('Error deleting achievement:', error);
         showNotification('Ошибка удаления достижения', 'error');
       }
     }
@@ -257,7 +275,6 @@ export default function Achievements() {
       setShowAssignModal(false);
       loadEmployeesData();
     } catch (error) {
-      console.error('Error assigning achievement:', error);
       showNotification('Ошибка назначения достижения', 'error');
     }
   };
@@ -276,8 +293,8 @@ export default function Achievements() {
   };
 
   const filteredAchievements = achievements.filter(achievement => {
-    const matchesSearch = achievement.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         achievement.description?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = achievement.name?.toLowerCase().includes(typesSearchTerm.toLowerCase()) ||
+                         achievement.description?.toLowerCase().includes(typesSearchTerm.toLowerCase());
     const matchesType = typeFilter === 'all' || achievement.type === typeFilter;
     const matchesStatus = statusFilter === 'all' || 
                          (statusFilter === 'active' && achievement.isActive) ||
@@ -287,14 +304,35 @@ export default function Achievements() {
   });
 
   const filteredEmployees = employees.filter(employee => {
-    const matchesSearch = employee.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         employee.email?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesFilter = selectedFilter === 'all' || 
-                         (selectedFilter === 'with_achievements' && getEmployeeAchievements(employee.id).length > 0) ||
-                         (selectedFilter === 'without_achievements' && getEmployeeAchievements(employee.id).length === 0);
+    const searchLower = employeesSearchTerm.toLowerCase();
+    const fullName = `${employee.first_name || ''} ${employee.last_name || ''}`.toLowerCase();
+    const departmentName = employee.department?.name || '';
+    
+    const matchesSearch = fullName.includes(searchLower) ||
+                         departmentName.toLowerCase().includes(searchLower);
+    const matchesFilter = employeesSelectedFilter === 'all' || 
+                         (employeesSelectedFilter === 'with_achievements' && getEmployeeAchievements(employee.id).length > 0) ||
+                         (employeesSelectedFilter === 'without_achievements' && getEmployeeAchievements(employee.id).length === 0);
     
     return matchesSearch && matchesFilter;
   });
+
+  // Пагинация для сотрудников
+  const totalPages = Math.ceil(filteredEmployees.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedEmployees = filteredEmployees.slice(startIndex, endIndex);
+
+  // Сброс страницы при изменении фильтров
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [employeesSearchTerm, employeesSelectedFilter]);
+
+  // Обработчик изменения количества элементов на странице
+  const handleItemsPerPageChange = (newItemsPerPage) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1); // Сбрасываем на первую страницу
+  };
 
   const stats = getStatistics();
 
@@ -315,11 +353,11 @@ export default function Achievements() {
   }
 
   return (
-    <div className="w-full max-w-none mx-auto pt-[70px] px-6 lg:px-8 xl:px-12">
+    <div className="w-full max-w-none mx-auto pt-[70px]">
       {/* Заголовок */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-[32px] font-bold font-accent text-primary pb-4 md:pb-0">Достижения</h1>
+          <h1 className="text-[32px] font-bold font-accent text-primary pb-4 md:pb-0">Управление бейджами</h1>
         </div>
         <div className="flex items-center gap-4">
           {activeTab === 'types' && (
@@ -332,11 +370,21 @@ export default function Achievements() {
             </button>
           )}
           
+          {activeTab === 'employees' && (
+            <button
+              onClick={() => setShowAssignModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-[8px] font-medium text-sm transition hover:bg-primary/90"
+            >
+              <Plus className="w-4 h-4" />
+              Отправить бейдж
+            </button>
+          )}
+          
           {/* Переключатель представлений */}
           <ViewSwitcher
             views={views}
             activeView={activeTab}
-            onViewChange={setActiveTab}
+            onViewChange={handleViewChange}
             className="flex-1 min-w-0"
           />
         </div>
@@ -380,10 +428,16 @@ export default function Achievements() {
           <Search className="w-4 h-4 text-gray-400 ml-3 mr-2" />
           <input
             type="text"
-            placeholder={activeTab === 'types' ? "Поиск по названию или описанию..." : "Поиск по имени или email..."}
+            placeholder={activeTab === 'types' ? "Поиск по названию или описанию..." : "Поиск по имени, фамилии или отделу..."}
             className="w-full bg-transparent outline-none text-base"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            value={activeTab === 'types' ? typesSearchTerm : employeesSearchTerm}
+            onChange={(e) => {
+              if (activeTab === 'types') {
+                setTypesSearchTerm(e.target.value);
+              } else {
+                setEmployeesSearchTerm(e.target.value);
+              }
+            }}
           />
         </div>
         <div className="flex gap-2">
@@ -415,8 +469,8 @@ export default function Achievements() {
             </>
           ) : (
             <select
-              value={selectedFilter}
-              onChange={(e) => setSelectedFilter(e.target.value)}
+              value={employeesSelectedFilter}
+              onChange={(e) => setEmployeesSelectedFilter(e.target.value)}
               className="px-3 py-2 border border-gray/20 rounded-[6px] text-sm bg-white"
             >
               <option value="all">Все сотрудники</option>
@@ -544,6 +598,22 @@ export default function Achievements() {
         </div>
       ) : (
         /* Представление распределения бейджей */
+        <div className="space-y-4">
+          {/* Пагинация сверху */}
+          {filteredEmployees.length > itemsPerPage && (
+            <div className="bg-white rounded-[15px] border border-gray/50 p-4">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+                totalItems={filteredEmployees.length}
+                itemsPerPage={itemsPerPage}
+                onItemsPerPageChange={handleItemsPerPageChange}
+              />
+            </div>
+          )}
+
+          {/* Таблица сотрудников */}
         <div className="bg-white rounded-[15px] border border-gray/50 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -556,7 +626,7 @@ export default function Achievements() {
                     Отдел
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-dark tracking-wider">
-                    Достижения
+                      Бейджи
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-dark tracking-wider">
                     Действия
@@ -573,7 +643,7 @@ export default function Achievements() {
                     </td>
                   </tr>
                 ) : (
-                  filteredEmployees.map((employee) => {
+                    paginatedEmployees.map((employee) => {
                     const employeeAchievementsList = getEmployeeAchievements(employee.id);
                     return (
                       <tr key={employee.id} className="hover:bg-gray/5">
@@ -589,25 +659,22 @@ export default function Achievements() {
                               <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
                                 <span className="text-sm font-medium text-primary">
                                   {(() => {
-                                    console.log('Employee data for initials:', {
-                                      id: employee.id,
-                                      firstName: employee.firstName,
-                                      lastName: employee.lastName,
-                                      name: employee.name,
-                                      full_name: employee.full_name
-                                    });
-                                    return employee.firstName && employee.lastName 
-                                      ? `${employee.firstName.charAt(0)}${employee.lastName.charAt(0)}`
-                                      : employee.name?.charAt(0) || employee.full_name?.charAt(0) || '?'
+                                      const firstName = employee?.first_name || employee?.firstName || employee?.name?.split(' ')[0] || '';
+                                      const lastName = employee?.last_name || employee?.lastName || employee?.name?.split(' ')[1] || '';
+                                      return firstName && lastName 
+                                        ? `${firstName.charAt(0)}${lastName.charAt(0)}`
+                                        : employee?.name?.charAt(0) || employee?.full_name?.charAt(0) || '?'
                                   })()}
                                 </span>
                               </div>
                             )}
                             <div>
                               <div className="text-sm font-medium text-dark">
-                                {employee.firstName && employee.lastName 
+                                  {employee?.first_name && employee?.last_name 
+                                    ? `${employee.first_name} ${employee.last_name}`
+                                    : employee?.firstName && employee?.lastName 
                                   ? `${employee.firstName} ${employee.lastName}`
-                                  : employee.name || employee.full_name || 'Неизвестный сотрудник'
+                                    : employee?.name || employee?.full_name || 'Неизвестный сотрудник'
                                 }
                               </div>
                               <div className="text-sm text-gray-500">{employee.position}</div>
@@ -623,8 +690,21 @@ export default function Achievements() {
                             {employeeAchievementsList.length > 0 && (
                               <div className="flex flex-wrap gap-1">
                                 {employeeAchievementsList.slice(0, 3).map((ea) => (
-                                  <div key={ea.id} className="w-6 h-6 rounded-full flex items-center justify-center" style={{ backgroundColor: ea.achievement?.color }}>
-                                    {getAchievementIcon(ea.achievement?.icon)}
+                                    <div 
+                                      key={ea.id} 
+                                      className="w-10 h-10 rounded-full flex items-center justify-center relative group" 
+                                      style={{ backgroundColor: ea.achievement?.color || '#f3f4f6' }}
+                                      title={ea.achievement?.name || 'Бейдж'}
+                                    >
+                                      {ea.achievement?.image ? (
+                                        <img 
+                                          src={ea.achievement.image} 
+                                          alt={ea.achievement.name || 'Бейдж'}
+                                          className="w-full h-full object-cover rounded-full"
+                                        />
+                                      ) : (
+                                        getAchievementIcon(ea.achievement?.icon)
+                                      )}
                                   </div>
                                 ))}
                                 {employeeAchievementsList.length > 3 && (
@@ -641,17 +721,11 @@ export default function Achievements() {
                             <button
                               onClick={() => handleAssignAchievement(employee)}
                               className="text-primary hover:text-primary/80 transition"
-                              title="Назначить достижение"
+                              title="Отправить бейдж"
                             >
                               <Plus className="w-4 h-4" />
                             </button>
-                            <button
-                              onClick={() => {/* TODO: Просмотр достижений */}}
-                              className="text-blue-600 hover:text-blue-800 transition"
-                              title="Просмотреть достижения"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </button>
+
                           </div>
                         </td>
                       </tr>
@@ -661,6 +735,21 @@ export default function Achievements() {
               </tbody>
             </table>
           </div>
+          </div>
+
+          {/* Пагинация снизу */}
+          {filteredEmployees.length > itemsPerPage && (
+            <div className="bg-white rounded-[15px] border border-gray/50 p-4">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+                totalItems={filteredEmployees.length}
+                itemsPerPage={itemsPerPage}
+                onItemsPerPageChange={handleItemsPerPageChange}
+              />
+            </div>
+          )}
         </div>
       )}
 

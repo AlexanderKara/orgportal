@@ -97,7 +97,14 @@ export default function Avatar({
     if (!name || typeof name !== 'string') return '?';
     const trimmedName = name.trim();
     if (!trimmedName) return '?';
-    return trimmedName.split(' ').map(n => n[0]).join('').toUpperCase();
+    
+    // Разделяем по пробелам и берем первые буквы каждого слова
+    const words = trimmedName.split(' ').filter(word => word.length > 0);
+    if (words.length === 0) return '?';
+    
+    // Берем первые буквы первых двух слов (имя и фамилия)
+    const initials = words.slice(0, 2).map(word => word[0]).join('').toUpperCase();
+    return initials;
   };
 
   const handleFileSelect = (e) => {

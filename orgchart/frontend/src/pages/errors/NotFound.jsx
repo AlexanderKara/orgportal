@@ -1,8 +1,38 @@
 import React from 'react';
 import { Search, Home, ArrowLeft } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 
 export default function NotFound() {
+  const location = useLocation();
+  
+  // Определяем правильную страницу возврата
+  const getBackPath = () => {
+    const path = location.pathname;
+    
+    // Если это страница структуры, возвращаемся на /structure
+    if (path.includes('/structure/')) {
+      return '/structure';
+    }
+    
+    // Если это страница продуктов, возвращаемся на /products
+    if (path.includes('/products/')) {
+      return '/products';
+    }
+    
+    // Если это страница компетенций, возвращаемся на /competencies
+    if (path.includes('/competencies/')) {
+      return '/competencies';
+    }
+    
+    // Если это админская страница, возвращаемся на /admin
+    if (path.includes('/admin/')) {
+      return '/admin';
+    }
+    
+    // По умолчанию возвращаемся на главную
+    return '/home/hello';
+  };
+  
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
@@ -30,19 +60,13 @@ export default function NotFound() {
 
         {/* Кнопки действий */}
         <div className="space-y-3">
-          <button
-            onClick={() => {
-              if (window.history.length > 1) {
-                window.history.back();
-              } else {
-                window.location.href = '/';
-              }
-            }}
+          <Link
+            to={getBackPath()}
             className="w-full flex items-center justify-center gap-2 bg-primary text-white py-3 px-6 rounded-lg hover:bg-primary/90 transition-colors font-medium"
           >
             <ArrowLeft className="w-4 h-4" />
             Вернуться назад
-          </button>
+          </Link>
 
           <Link
             to="/"

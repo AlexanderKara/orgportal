@@ -4,6 +4,7 @@ import { Building, Plus, Edit, Trash2, Archive, Download, Upload, Search, Check,
 import DepartmentModal from '../../components/DepartmentModal';
 import FourPointedStar from '../../components/FourPointedStar';
 import { showNotification } from '../../utils/notifications';
+import { exportData, importFile } from '../../utils/exportUtils';
 
 export default function Departments() {
   const [search, setSearch] = useState('');
@@ -270,27 +271,7 @@ export default function Departments() {
   };
 
   // Функция для парсинга CSV строки с учетом кавычек
-  const parseCSVLine = (line, delimiter) => {
-    const result = [];
-    let current = '';
-    let inQuotes = false;
-    
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i];
-      
-      if (char === '"') {
-        inQuotes = !inQuotes;
-      } else if (char === delimiter && !inQuotes) {
-        result.push(current.trim());
-        current = '';
-      } else {
-        current += char;
-      }
-    }
-    
-    result.push(current.trim());
-    return result;
-  };
+
 
   const handleExport = () => {
     const data = filteredDepartments.map(dept => ({
@@ -304,186 +285,186 @@ export default function Departments() {
       'Порядок': dept.order || 0
     }));
     
-    // Экспорт с разделителем точка с запятой и экранированием
-    const csv = [
-      Object.keys(data[0]).join(';'),
-      ...data.map(row => Object.values(row).map(value => {
-        const stringValue = String(value);
-        if (stringValue.includes(';') || stringValue.includes('"') || stringValue.includes('\n')) {
-          return `"${stringValue.replace(/"/g, '""')}"`;
-        }
-        return stringValue;
-      }).join(';'))
-    ].join('\n');
-    
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `departments_${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
+    // Используем универсальную функцию экспорта в Excel
+    exportData(data, 'departments', 'excel', null, 'Отделы');
   };
 
   const handleImport = () => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.csv';
-    input.onchange = (e) => {
+    input.accept = '.xlsx,.xls,.csv';
+    input.onchange = async (e) => {
       const file = e.target.files[0];
       if (file) {
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-          try {
-            const csv = e.target.result;
-            const lines = csv.split('\n').filter(line => line.trim());
+        try {
+          // Используем универсальную функцию импорта
+          const importedData = await importFile(file);
+          
+          if (importedData.length < 1) {
+            showNotification('Файл должен содержать хотя бы одну строку данных', 'info');
+            return;
+          }
+          
+          const headers = Object.keys(importedData[0]);
+          const requiredHeaders = ['ID', 'Название'];
+          const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
+          
+          if (missingHeaders.length > 0) {
+            showNotification(`Отсутствуют обязательные заголовки: ${missingHeaders.join(', ')}`, 'error');
+            return;
+          }
+          
+          const importedDepartments = importedData.map((row, index) => {
+            const department = {};
             
-            if (lines.length < 2) {
-              showNotification('Файл должен содержать заголовки и хотя бы одну строку данных', 'info');
-              return;
-            }
-            
-            // Определяем разделитель (приоритет точке с запятой)
-            const firstLine = lines[0];
-            const semicolonCount = (firstLine.match(/;/g) || []).length;
-            const commaCount = (firstLine.match(/,/g) || []).length;
-            const delimiter = semicolonCount > 0 ? ';' : ',';
-            
-            const headers = parseCSVLine(lines[0], delimiter).map(h => h.trim().replace(/"/g, ''));
-            const requiredHeaders = ['ID', 'Название'];
-            const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
-            
-            if (missingHeaders.length > 0) {
-              showNotification(`Отсутствуют обязательные заголовки: ${missingHeaders.join(', ')}`, 'error');
-              return;
-            }
-            
-            const importedDepartments = lines.slice(1).map((line, index) => {
-              const values = parseCSVLine(line, delimiter);
-              const department = {};
-              
-              headers.forEach((header, headerIndex) => {
-                const value = values[headerIndex] || '';
-                switch (header) {
-                  case 'ID':
-                    department.id = value;
-                    break;
-                  case 'Название':
-                    department.name = value;
-                    break;
-                  case 'Слоган':
-                    department.slogan = value;
-                    break;
-                  case 'Описание':
-                    department.description = value;
-                    break;
-                  case 'Компетенции':
-                    department.competencies = value ? value.split(';').map(c => c.trim()).filter(c => c) : '';
-                    break;
-                  case 'Цвет':
-                    department.color = value || '#3B82F6';
-                    break;
-                  case 'Статус':
-                    department.status = value || 'active';
-                    break;
-                  case 'Порядок':
-                    department.order = parseInt(value) || 0;
-                    break;
-                }
-              });
-              
-              department._rowNumber = index + 2;
-              return department;
+            headers.forEach(header => {
+              const value = row[header] || '';
+              switch (header) {
+                case 'ID':
+                  department.id = value;
+                  break;
+                case 'Название':
+                  department.name = value;
+                  break;
+                case 'Слоган':
+                  department.slogan = value;
+                  break;
+                case 'Описание':
+                  department.description = value;
+                  break;
+                case 'Компетенции':
+                  department.competencies = value ? value.split(';').map(c => c.trim()).filter(c => c) : '';
+                  break;
+                case 'Цвет':
+                  department.color = value || '#3B82F6';
+                  break;
+                case 'Статус':
+                  department.status = value || 'active';
+                  break;
+                case 'Порядок':
+                  department.order = parseInt(value) || 0;
+                  break;
+              }
             });
             
-            // Валидация и обработка данных
-            const validDepartments = [];
-            const errors = [];
-            const updates = [];
-            const creates = [];
+            department._rowNumber = index + 2;
+            return department;
+          });
+          
+          // Валидация и обработка данных
+          const validDepartments = [];
+          const errors = [];
+          const updates = [];
+          const creates = [];
+          
+          for (const department of importedDepartments) {
+            const rowErrors = [];
             
-            for (const department of importedDepartments) {
-              const rowErrors = [];
-              
-              // Проверяем обязательные поля
-              if (!department.name || !department.name.trim()) {
-                rowErrors.push('Название обязательно');
-              }
-              
-              if (rowErrors.length > 0) {
-                errors.push({
-                  row: department._rowNumber,
-                  errors: rowErrors
+            // Проверяем обязательные поля
+            if (!department.name || !department.name.trim()) {
+              rowErrors.push('Название обязательно');
+            }
+            
+            if (rowErrors.length > 0) {
+              errors.push({
+                row: department._rowNumber,
+                errors: rowErrors
+              });
+              continue;
+            }
+            
+            // Ищем существующий отдел по ID
+            if (department.id && department.id.trim()) {
+              const existingDepartment = departments.find(dept => dept.id == department.id);
+              if (existingDepartment) {
+                updates.push({
+                  id: existingDepartment.id,
+                  data: department
                 });
-                continue;
-              }
-              
-              // Ищем существующий отдел по ID
-              if (department.id && department.id.trim()) {
-                const existingDepartment = departments.find(dept => dept.id == department.id);
-                if (existingDepartment) {
-                  updates.push({
-                    id: existingDepartment.id,
-                    data: department
-                  });
-                } else {
-                  // ID указан, но отдел не найден - создаем новый
-                  delete department.id;
-                  creates.push(department);
-                }
               } else {
-                // Нет ID - новый отдел
+                // ID указан, но отдел не найден - создаем новый
+                delete department.id;
                 creates.push(department);
               }
-              
-              validDepartments.push(department);
+            } else {
+              // Нет ID - новый отдел
+              creates.push(department);
             }
             
-            // Выполняем операции с базой данных
-            let successCount = 0;
-            let errorCount = 0;
-            
-            // Обновляем существующие отделы
-            for (const update of updates) {
-              try {
-                await api.updateDepartment(update.id, update.data);
-                successCount++;
-              } catch (error) {
-                errorCount++;
-                console.error(`Ошибка обновления отдела ${update.data.name}:`, error);
-              }
-            }
-            
-            // Создаем новые отделы
-            for (const create of creates) {
-              try {
-                await api.createDepartment(create);
-                successCount++;
-              } catch (error) {
-                errorCount++;
-                console.error(`Ошибка создания отдела ${create.name}:`, error);
-              }
-            }
-            
-            // Показываем результаты
-            if (successCount > 0) {
-              showNotification(`Импорт завершен. Успешно: ${successCount}, Ошибок: ${errorCount}`, 'success');
-              await loadData(); // Перезагружаем данные
-            }
-            
-            if (errorCount > 0) {
-              showNotification(`Импорт завершен с ошибками. Успешно: ${successCount}, Ошибок: ${errorCount}`, 'warning');
-            }
-            
-          } catch (error) {
-            console.error('Ошибка при импорте:', error);
-            showNotification('Ошибка при обработке файла. Проверьте формат CSV.', 'error');
+            validDepartments.push(department);
           }
-        };
-        reader.readAsText(file, 'UTF-8');
+          
+          // Выполняем операции с базой данных
+          let successCount = 0;
+          let errorCount = 0;
+          
+          // Обновляем существующие отделы
+          for (const update of updates) {
+            try {
+              await api.updateDepartment(update.id, update.data);
+              successCount++;
+            } catch (error) {
+              errorCount++;
+              console.error(`Ошибка обновления отдела ${update.data.name}:`, error);
+            }
+          }
+          
+          // Создаем новые отделы
+          for (const create of creates) {
+            try {
+              await api.createDepartment(create);
+              successCount++;
+            } catch (error) {
+              errorCount++;
+              console.error(`Ошибка создания отдела ${create.name}:`, error);
+            }
+          }
+          
+          // Показываем результаты
+          if (successCount > 0) {
+            showNotification(`Импорт завершен. Успешно: ${successCount}, Ошибок: ${errorCount}`, 'success');
+            await loadData(); // Перезагружаем данные
+          }
+          
+          if (errorCount > 0) {
+            showNotification(`Импорт завершен с ошибками. Успешно: ${successCount}, Ошибок: ${errorCount}`, 'warning');
+          }
+          
+        } catch (error) {
+          console.error('Ошибка при импорте:', error);
+          showNotification(`Ошибка при обработке файла: ${error.message}`, 'error');
+        }
       }
     };
     input.click();
+  };
+
+  const handleDownloadTemplate = () => {
+    const templateData = [
+      {
+        'ID': '',
+        'Название': 'Название отдела',
+        'Слоган': 'Краткий слоган отдела',
+        'Описание': 'Подробное описание отдела',
+        'Компетенции': 'Компетенция 1; Компетенция 2; Компетенция 3',
+        'Цвет': '#3B82F6',
+        'Статус': 'active',
+        'Порядок': '1'
+      },
+      {
+        'ID': '',
+        'Название': 'Пример отдела',
+        'Слоган': 'Мы делаем мир лучше',
+        'Описание': 'Отдел, который занимается разработкой инновационных решений',
+        'Компетенции': 'JavaScript; React; TypeScript; Коммуникация; Лидерство',
+        'Цвет': '#10B981',
+        'Статус': 'active',
+        'Порядок': '2'
+      }
+    ];
+    
+    // Экспортируем шаблон в Excel
+    exportData(templateData, 'departments_template', 'excel', null, 'Шаблон отделов');
   };
 
   return (
@@ -528,6 +509,13 @@ export default function Departments() {
           >
             <Upload className="w-4 h-4" />
             <span className="hidden lg:inline">Импорт</span>
+          </button>
+          <button
+            onClick={handleDownloadTemplate}
+            className="flex items-center gap-2 px-2 lg:px-4 py-2 border border-gray/20 text-gray-700 rounded-[8px] font-medium text-sm transition hover:bg-gray/10"
+          >
+            <Download className="w-4 h-4" />
+            <span className="hidden lg:inline">Шаблон</span>
           </button>
           <button
             onClick={handleExport}

@@ -10,8 +10,11 @@ import Select from 'react-select';
 import EmployeeModal from '../../components/EmployeeModal';
 import AvatarCropModal from '../../components/AvatarCropModal';
 import Avatar from '../../components/ui/Avatar';
+import Checkbox from '../../components/ui/Checkbox';
+import Pagination from '../../components/ui/Pagination';
 import api from '../../services/api';
 import { showNotification } from '../../utils/notifications';
+import { exportData, importFile } from '../../utils/exportUtils';
 
 const customSelectStyles = {
   control: (provided, state) => ({
@@ -139,6 +142,10 @@ export default function Employees() {
   const [processedRows, setProcessedRows] = useState(0);
   const [abortImport, setAbortImport] = useState(false);
 
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
+
   // Загружаем данные
   useEffect(() => {
     const loadData = async () => {
@@ -234,6 +241,17 @@ export default function Employees() {
 
     return filtered;
   }, [employees, search, selectedDepartment, selectedRole, sortBy, sortDirection, loading]);
+
+  // Пагинация
+  const totalPages = Math.ceil(filteredEmployees.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedEmployees = filteredEmployees.slice(startIndex, endIndex);
+
+  // Сброс страницы при изменении фильтров
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, selectedDepartment, selectedRole]);
 
   const handleSort = (field) => {
     if (sortBy === field) {
@@ -581,76 +599,104 @@ export default function Employees() {
     }
   };
 
+  // Функция для форматирования даты в формат DD.MM.YYYY
+  const formatDateForExport = (dateString) => {
+    if (!dateString || dateString === 'Не указана' || dateString === '') {
+      return '';
+    }
+    
+    try {
+      // Если дата в формате ISO (2025-07-13T00:00:00.000Z)
+      if (dateString.includes('T')) {
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return '';
+        
+        const day = date.getDate().toString().padStart(2, '0');
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const year = date.getFullYear();
+        
+        return `${day}.${month}.${year}`;
+      }
+      
+      // Если дата в формате YYYY-MM-DD
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+        const [year, month, day] = dateString.split('-');
+        return `${day}.${month}.${year}`;
+      }
+      
+      // Если дата уже в формате DD.MM.YYYY
+      if (/^\d{1,2}\.\d{1,2}\.\d{4}$/.test(dateString)) {
+        return dateString;
+      }
+      
+      return dateString;
+    } catch (error) {
+      console.error('Ошибка форматирования даты:', error);
+      return dateString;
+    }
+  };
+
   const handleExport = () => {
     const data = filteredEmployees.map(emp => ({
       'Имя': emp.first_name || '',
       'Фамилия': emp.last_name || '',
       'Email': emp.email || '',
       'Должность': emp.position || '',
-      'Отдел': emp.department?.name || 'Не указан',
+      'Отдел': emp.department?.name || '',
       'Роль в отделе': getRoleText(emp.department_role) || '',
-      'Telegram': emp.telegram || 'Не указан',
-      'Телефон': emp.phone || 'Не указан',
-      'Компетенции': emp.competencies || 'Не указаны',
-      'Дата приема': emp.hire_date || 'Не указана',
-      'Дата рождения': emp.birth_date || 'Не указана',
+      'Telegram': emp.telegram || '',
+      'Телефон': emp.phone || '',
+      'Компетенции': emp.competencies || '',
+      'Дата приема': formatDateForExport(emp.hire_date),
+      'Дата рождения': formatDateForExport(emp.birth_date),
       'Статус': emp.status || 'active',
       'ID сотрудника': emp.id || '',
       'ID отдела': emp.department_id || ''
     }));
     
-    // Экспорт с разделителем точка с запятой и экранированием
-    const csv = [
-      Object.keys(data[0]).join(';'),
-      ...data.map(row => Object.values(row).map(value => {
-        const stringValue = String(value);
-        // Экранируем кавычки и заключаем в кавычки если есть точка с запятой, кавычки или перенос строки
-        if (stringValue.includes(';') || stringValue.includes('"') || stringValue.includes('\n')) {
-          return `"${stringValue.replace(/"/g, '""')}"`;
-        }
-        return stringValue;
-      }).join(';'))
-    ].join('\n');
-    
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `employees_${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
+    // Создаем данные для отдельного листа с отделами
+    const departmentsData = departments.map(dept => ({
+      'ID': dept.id || '',
+      'Название': dept.name || '',
+      'Слоган': dept.slogan || '',
+      'Описание': dept.description || '',
+      'Компетенции': Array.isArray(dept.competencies) ? dept.competencies.join('\n') : (dept.competencies || ''),
+      'Цвет': dept.color || '#3B82F6',
+      'Статус': dept.status || 'active',
+      'Порядок': dept.order || 0
+    }));
+
+    // Экспорт в Excel с множественными листами
+    const sheets = [
+      { name: 'Сотрудники', data },
+      { name: 'Отделы', data: departmentsData }
+    ];
+
+    exportData(data, 'employees', 'excel', sheets, 'Сотрудники');
   };
 
   const handleImport = () => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.csv';
-    input.onchange = (e) => {
+    input.accept = '.xlsx,.xls,.csv';
+    input.onchange = async (e) => {
       const file = e.target.files[0];
       if (file) {
-        const reader = new FileReader();
-        reader.onload = async (e) => {
           try {
             setImporting(true);
             setImportProgress(0);
             setImportErrors([]);
             setImportSuccess([]);
             
-            const csv = e.target.result;
-            const lines = csv.split('\n').filter(line => line.trim());
+          // Используем универсальную функцию импорта
+          const importedData = await importFile(file);
             
-            if (lines.length < 2) {
-              showNotification('Файл должен содержать заголовки и хотя бы одну строку данных', 'info');
+          if (importedData.length < 1) {
+            showNotification('Файл должен содержать хотя бы одну строку данных', 'info');
               return;
             }
             
-            // Определяем разделитель (приоритет точке с запятой)
-            const firstLine = lines[0];
-            const semicolonCount = (firstLine.match(/;/g) || []).length;
-            const commaCount = (firstLine.match(/,/g) || []).length;
-            const delimiter = semicolonCount > 0 ? ';' : ',';
-            
-            const headers = parseCSVLine(lines[0], delimiter).map(h => h.trim().replace(/"/g, ''));
+          const headers = Object.keys(importedData[0]);
             const requiredHeaders = ['Имя', 'Фамилия', 'Email'];
             const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
             
@@ -659,12 +705,11 @@ export default function Employees() {
               return;
             }
             
-            const importedEmployees = lines.slice(1).map((line, index) => {
-              const values = parseCSVLine(line, delimiter);
+          const importedEmployees = importedData.map((row, index) => {
               const employee = {};
               
-              headers.forEach((header, headerIndex) => {
-                const value = values[headerIndex] || '';
+            headers.forEach(header => {
+              const value = row[header] || '';
                 switch (header) {
                   case 'Имя':
                     employee.first_name = value;
@@ -754,7 +799,7 @@ export default function Employees() {
               
               if (rowErrors.length > 0) {
                 errors.push({
-                  row: employee._rowNumber,
+                row: i + 2, // +2 для учета заголовков и индексации с 1
                   errors: rowErrors
                 });
                 continue;
@@ -822,12 +867,10 @@ export default function Employees() {
             
           } catch (error) {
             console.error('Ошибка при импорте:', error);
-            showNotification('Ошибка при обработке файла. Проверьте формат CSV.', 'error');
+          showNotification(`Ошибка при обработке файла: ${error.message}`, 'error');
           } finally {
             setImporting(false);
           }
-        };
-        reader.readAsText(file, 'UTF-8');
       }
     };
     input.click();
@@ -1269,25 +1312,35 @@ export default function Employees() {
       }
     ];
     
-    // Экспорт шаблона с разделителем точка с запятой и экранированием
-    const csv = [
-      Object.keys(templateData[0]).join(';'),
-      ...templateData.map(row => Object.values(row).map(value => {
-        const stringValue = String(value);
-        if (stringValue.includes(';') || stringValue.includes('"') || stringValue.includes('\n')) {
-          return `"${stringValue.replace(/"/g, '""')}"`;
-        }
-        return stringValue;
-      }).join(';'))
-    ].join('\n');
-    
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'employees_template.csv';
-    a.click();
-    window.URL.revokeObjectURL(url);
+    // Создаем данные для отдельного листа с отделами
+    const departmentsTemplate = [
+      {
+        'ID отдела': '1',
+        'Название отдела': 'Разработка',
+        'Описание': 'Отдел разработки программного обеспечения',
+        'Руководитель': 'Иван Иванов'
+      },
+      {
+        'ID отдела': '2',
+        'Название отдела': 'Маркетинг',
+        'Описание': 'Отдел маркетинга и продвижения',
+        'Руководитель': 'Петр Петров'
+      },
+      {
+        'ID отдела': '3',
+        'Название отдела': 'Продажи',
+        'Описание': 'Отдел продаж и клиентского сервиса',
+        'Руководитель': 'Анна Сидорова'
+      }
+    ];
+
+    // Экспорт шаблона в Excel с множественными листами
+    const sheets = [
+      { name: 'Сотрудники', data: templateData },
+      { name: 'Отделы', data: departmentsTemplate }
+    ];
+
+    exportData(templateData, 'employees_template', 'excel', sheets, 'Сотрудники');
   };
 
   const handleAvatarUpload = (e) => {
@@ -1507,6 +1560,102 @@ export default function Employees() {
         </div>
       </div>
 
+      {/* Пагинация над таблицей */}
+      {totalPages > 1 && (
+        <div className="mb-6">
+          <div className="flex items-center justify-between bg-white rounded-[15px] border border-gray/50 p-4">
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-gray-600">
+                Показано {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, filteredEmployees.length)} из {filteredEmployees.length}
+              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600">Строк на странице:</span>
+                <select
+                  value={itemsPerPage}
+                  onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                  className="border border-gray/20 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                </select>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="flex items-center gap-1 px-3 py-1 text-sm border border-gray/20 rounded hover:bg-gray/10 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                ← Предыдущая
+              </button>
+              
+              <div className="flex items-center gap-1">
+                {(() => {
+                  const pages = [];
+                  const maxVisiblePages = 5;
+                  
+                  if (totalPages <= maxVisiblePages) {
+                    for (let i = 1; i <= totalPages; i++) {
+                      pages.push(i);
+                    }
+                  } else {
+                    if (currentPage <= 3) {
+                      for (let i = 1; i <= 4; i++) {
+                        pages.push(i);
+                      }
+                      pages.push('...');
+                      pages.push(totalPages);
+                    } else if (currentPage >= totalPages - 2) {
+                      pages.push(1);
+                      pages.push('...');
+                      for (let i = totalPages - 3; i <= totalPages; i++) {
+                        pages.push(i);
+                      }
+                    } else {
+                      pages.push(1);
+                      pages.push('...');
+                      for (let i = currentPage - 1; i <= currentPage + 1; i++) {
+                        pages.push(i);
+                      }
+                      pages.push('...');
+                      pages.push(totalPages);
+                    }
+                  }
+                  
+                  return pages.map((page, index) => (
+                    <button
+                      key={index}
+                      onClick={() => typeof page === 'number' && setCurrentPage(page)}
+                      disabled={page === '...'}
+                      className={`px-3 py-1 text-sm border rounded ${
+                        page === currentPage
+                          ? 'bg-primary text-white border-primary'
+                          : page === '...'
+                          ? 'border-transparent cursor-default'
+                          : 'border-gray/20 hover:bg-gray/10'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ));
+                })()}
+              </div>
+              
+              <button
+                onClick={() => setCurrentPage(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="flex items-center gap-1 px-3 py-1 text-sm border border-gray/20 rounded hover:bg-gray/10 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Следующая →
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Таблица сотрудников */}
       <div className="bg-white rounded-[15px] border border-gray/50 overflow-hidden">
         <div className="overflow-x-auto">
@@ -1514,11 +1663,9 @@ export default function Employees() {
             <thead className="bg-gray">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-dark tracking-wider sticky left-0 z-10 bg-gray">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={selectedEmployees.size === filteredEmployees.length && filteredEmployees.length > 0}
                     onChange={handleSelectAll}
-                    className="rounded border-gray-300 text-primary focus:ring-primary"
                   />
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-dark tracking-wider sticky left-[60px] z-10 bg-gray">
@@ -1759,14 +1906,12 @@ export default function Employees() {
                   </td>
                 </tr>
               )}
-              {filteredEmployees.map((employee, index) => (
+              {paginatedEmployees.map((employee, index) => (
                 <tr key={employee.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray/5'}>
                   <td className={`px-6 py-4 whitespace-nowrap sticky left-0 z-10 ${index % 2 === 0 ? 'bg-white' : 'bg-gray/5'}`}>
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={selectedEmployees.has(employee.id)}
                       onChange={() => handleSelectEmployee(employee.id)}
-                      className="rounded border-gray-300 text-primary focus:ring-primary"
                     />
                   </td>
                   <td className={`px-6 py-4 whitespace-nowrap sticky left-[60px] z-10 ${index % 2 === 0 ? 'bg-white' : 'bg-gray/5'}`}>
@@ -2020,6 +2165,102 @@ export default function Employees() {
           </table>
         </div>
       </div>
+
+      {/* Пагинация */}
+      {totalPages > 1 && (
+        <div className="mt-6">
+          <div className="flex items-center justify-between bg-white rounded-[15px] border border-gray/50 p-4">
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-gray-600">
+                Показано {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, filteredEmployees.length)} из {filteredEmployees.length}
+              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600">Строк на странице:</span>
+                <select
+                  value={itemsPerPage}
+                  onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                  className="border border-gray/20 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                </select>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="flex items-center gap-1 px-3 py-1 text-sm border border-gray/20 rounded hover:bg-gray/10 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                ← Предыдущая
+              </button>
+              
+              <div className="flex items-center gap-1">
+                {(() => {
+                  const pages = [];
+                  const maxVisiblePages = 5;
+                  
+                  if (totalPages <= maxVisiblePages) {
+                    for (let i = 1; i <= totalPages; i++) {
+                      pages.push(i);
+                    }
+                  } else {
+                    if (currentPage <= 3) {
+                      for (let i = 1; i <= 4; i++) {
+                        pages.push(i);
+                      }
+                      pages.push('...');
+                      pages.push(totalPages);
+                    } else if (currentPage >= totalPages - 2) {
+                      pages.push(1);
+                      pages.push('...');
+                      for (let i = totalPages - 3; i <= totalPages; i++) {
+                        pages.push(i);
+                      }
+                    } else {
+                      pages.push(1);
+                      pages.push('...');
+                      for (let i = currentPage - 1; i <= currentPage + 1; i++) {
+                        pages.push(i);
+                      }
+                      pages.push('...');
+                      pages.push(totalPages);
+                    }
+                  }
+                  
+                  return pages.map((page, index) => (
+                    <button
+                      key={index}
+                      onClick={() => typeof page === 'number' && setCurrentPage(page)}
+                      disabled={page === '...'}
+                      className={`px-3 py-1 text-sm border rounded ${
+                        page === currentPage
+                          ? 'bg-primary text-white border-primary'
+                          : page === '...'
+                          ? 'border-transparent cursor-default'
+                          : 'border-gray/20 hover:bg-gray/10'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ));
+                })()}
+              </div>
+              
+              <button
+                onClick={() => setCurrentPage(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="flex items-center gap-1 px-3 py-1 text-sm border border-gray/20 rounded hover:bg-gray/10 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Следующая →
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Модальное окно добавления сотрудника */}
       <EmployeeModal

@@ -9,8 +9,8 @@ import Logo from '../res/A_logo.svg?react';
 const baseMenu = [
   { to: '/home/hello', icon: <Logo className="w-7 h-7" />, label: '' },
   { to: '/structure', icon: <Users className="w-5 h-5" />, label: 'Орг. схема' },
-  { to: '/products', icon: <Package className="w-5 h-5" />, label: 'Продукты' },
   { to: '/competencies', icon: <Award className="w-5 h-5" />, label: 'Компетенции' },
+  { to: '/products', icon: <Package className="w-5 h-5" />, label: 'Продукты' },
   { to: '/vacations', icon: <Calendar className="w-5 h-5" />, label: 'Отпуска' },
 ];
 
@@ -112,7 +112,7 @@ export default function Header() {
       style={{ paddingLeft, paddingRight }}
     >
       {isAuthenticated ? (
-        <nav className={`flex items-center bg-gray rounded-[25px] px-1 pr-1 lg:px-2 lg:pr-1 py-1 min-h-[40px] gap-1 flex-shrink-0`}> {/* px-1 и pr-1 для всех размеров, gap-1 между кнопками */}
+        <nav className={`flex items-center bg-gray rounded-[25px] pl-1 pr-1 lg:pl-2 lg:pr-1 py-1 min-h-[40px] gap-1 flex-shrink-0`}> {/* pl-1 и pr-1 для всех размеров, gap-1 между кнопками */}
           {/* Логотип всегда видимый */}
           <NavLink
             to={isAuthenticated ? "/home/hello" : "/"}
