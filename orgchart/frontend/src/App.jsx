@@ -50,6 +50,9 @@ const TokenDistributionService = lazy(() => import('./pages/admin/TokenDistribut
 const DistributionSettings = lazy(() => import('./pages/admin/DistributionSettings'));
 const Achievements = lazy(() => import('./pages/admin/Achievements'));
 const AppSettings = lazy(() => import('./pages/admin/Settings'));
+const MeetingRooms = lazy(() => import('./pages/MeetingRooms'));
+const AdminMeetingRooms = lazy(() => import('./pages/admin/MeetingRooms'));
+const MeetingRoomService = lazy(() => import('./pages/admin/MeetingRoomService'));
 
 // Компонент загрузки
 const LoadingSpinner = () => (
@@ -60,8 +63,8 @@ const LoadingSpinner = () => (
 
 export default function App() {
   return (
-    <SettingsProvider>
-      <AuthProvider>
+    <AuthProvider>
+      <SettingsProvider>
         <RoleProvider>
           <BrowserRouter>
             <ErrorBoundaryWrapper>
@@ -80,6 +83,26 @@ export default function App() {
               </ProtectedRoute>
             }>
               <Route index element={<PublicLanding />} />
+              <Route path="hello" element={<PublicLanding />} />
+              <Route path="team-a" element={<PublicLanding />} />
+              <Route path="timeline" element={<PublicLanding />} />
+            </Route>
+            
+            {/* Отдельные публичные роуты */}
+            <Route path="/timeline" element={
+              <ProtectedRoute requireAuth={false}>
+                <PublicLayout />
+              </ProtectedRoute>
+            }>
+              <Route index element={<PublicLanding />} />
+            </Route>
+            
+            <Route path="/team-a" element={
+              <ProtectedRoute requireAuth={false}>
+                <PublicLayout />
+              </ProtectedRoute>
+            }>
+              <Route index element={<PublicLanding />} />
             </Route>
             
             {/* Главная страница дашборда */}
@@ -91,6 +114,18 @@ export default function App() {
               <Route path="hello" element={<Landing />} />
               <Route path="team-a" element={<Landing />} />
               <Route path="timeline" element={<Landing />} />
+            </Route>
+            
+            {/* Публичные роуты /home для неавторизованных пользователей */}
+            <Route path="/home" element={
+              <ProtectedRoute requireAuth={false}>
+                <PublicLayout />
+              </ProtectedRoute>
+            }>
+              <Route index element={<PublicLanding />} />
+              <Route path="hello" element={<PublicLanding />} />
+              <Route path="team-a" element={<PublicLanding />} />
+              <Route path="timeline" element={<PublicLanding />} />
             </Route>
             
             {/* Личный кабинет */}
@@ -146,6 +181,14 @@ export default function App() {
               </ProtectedRoute>
             }>
               <Route index element={<Vacations />} />
+            </Route>
+            
+            <Route path="/meeting-rooms" element={
+              <ProtectedRoute>
+                <MainLayout />
+              </ProtectedRoute>
+            }>
+              <Route index element={<MeetingRooms />} />
             </Route>
             
             <Route path="/send-token" element={
@@ -300,6 +343,16 @@ export default function App() {
                   <Achievements defaultView="employees" />
                 </Suspense>
               } />
+              <Route path="meeting-rooms" element={
+                <Suspense fallback={<LoadingSpinner />}>
+                  <AdminMeetingRooms />
+                </Suspense>
+              } />
+              <Route path="meeting-room-service" element={
+                <Suspense fallback={<LoadingSpinner />}>
+                  <MeetingRoomService />
+                </Suspense>
+              } />
 
             </Route>
             
@@ -365,7 +418,7 @@ export default function App() {
         </ErrorBoundaryWrapper>
         </BrowserRouter>
           </RoleProvider>
-        </AuthProvider>
-      </SettingsProvider>
+        </SettingsProvider>
+      </AuthProvider>
     );
   } 

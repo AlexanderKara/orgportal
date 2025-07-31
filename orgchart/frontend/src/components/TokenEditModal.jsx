@@ -40,40 +40,17 @@ export default function TokenEditModal({ isOpen, onClose, onSubmit, token = null
 
   const generateRandomImage = async (folderOverride = null) => {
     try {
-      let folder = folderOverride || formData.imageFolder;
+      const folder = folderOverride || formData.imageFolder || 'grey';
       
-      console.log('generateRandomImage - folderOverride:', folderOverride);
-      console.log('generateRandomImage - formData.imageFolder:', formData.imageFolder);
-      console.log('generateRandomImage - итоговая папка до исправления:', folder);
+      // Исправляем папку grey на правильное название
+      const correctedFolder = folder === 'grey' ? 'grey' : folder;
       
-      // Исправляем неправильные значения
-      if (folder === 'folders' || folder === 'gray') {
-        console.log('Исправляем папку с', folder, 'на grey');
-        folder = 'grey';
-      }
-      
-      console.log('generateRandomImage вызвана с папкой:', folder);
-      const response = await fetch(`/api/tokens/images/${folder}/random`);
-      
-      if (response.ok) {
-        const data = await response.json();
-        // Проверяем, является ли результат изображением или эмодзи
-        if (data.image && data.image.startsWith('/uploads/')) {
-          return data.image;
-        } else {
-          // Если нет изображения, возвращаем случайный эмодзи
-          const emojis = ['🎯', '🏆', '⭐', '💎', '🔥', '🌟', '💫', '✨', '🎉', '🎊'];
-          return emojis[Math.floor(Math.random() * emojis.length)];
-        }
-      } else {
-        console.warn('Failed to get random image, using fallback emoji');
-        const emojis = ['🎯', '🏆', '⭐', '💎', '🔥', '🌟', '💫', '✨', '🎉', '🎊'];
-        return emojis[Math.floor(Math.random() * emojis.length)];
+      const response = await api.get(`/api/tokens/random-image?folder=${correctedFolder}`);
+      if (response && response.imageUrl) {
+        setFormData(prev => ({ ...prev, imageUrl: response.imageUrl }));
       }
     } catch (error) {
-      console.error('Error getting random image:', error);
-      const emojis = ['🎯', '🏆', '⭐', '💎', '🔥', '🌟', '💫', '✨', '🎉', '🎊'];
-      return emojis[Math.floor(Math.random() * emojis.length)];
+      console.error('Ошибка при генерации случайного изображения:', error);
     }
   };
 
@@ -102,29 +79,19 @@ export default function TokenEditModal({ isOpen, onClose, onSubmit, token = null
     }
   };
 
-  const loadAvailableFolders = async () => {
+  const loadFolders = async () => {
     try {
-      const response = await fetch('/api/tokens/images/folders');
-      if (response.ok) {
-        const folders = await response.json();
-        console.log('Загруженные папки:', folders);
-        console.log('Тип данных:', typeof folders);
-        console.log('Длина массива:', Array.isArray(folders) ? folders.length : 'не массив');
-        console.log('Содержимое массива:', JSON.stringify(folders, null, 2));
-        
-        // Используем реальные названия папок без лейблов
-        const mappedFolders = folders.map(folder => ({
-          value: folder,
-          label: folder // Показываем реальное название папки
-        }));
-        console.log('Маппинг папок:', mappedFolders);
-        setAvailableFolders(mappedFolders);
-      } else {
-        console.warn('Failed to load folders, using fallback');
-        setAvailableFolders([]);
-      }
+      const response = await api.get('/api/tokens/folders');
+      const folders = response || [];
+      
+      const mappedFolders = folders.map(folder => ({
+        value: folder,
+        label: folder.charAt(0).toUpperCase() + folder.slice(1)
+      }));
+      
+      setAvailableFolders(mappedFolders);
     } catch (error) {
-      console.error('Error loading folders:', error);
+      console.error('Ошибка при загрузке папок:', error);
       setAvailableFolders([]);
     }
   };
@@ -173,73 +140,48 @@ export default function TokenEditModal({ isOpen, onClose, onSubmit, token = null
   };
 
   useEffect(() => {
-    const initializeForm = async () => {
+    const initializeForm = () => {
       if (token) {
-        // Редактирование существующего токена
-        console.log('Редактирование токена:', token);
-        console.log('token.imageFolder:', token.imageFolder);
-        console.log('token.name:', token.name);
-        
-        // Исправляем неправильное значение imageFolder
+        // Исправляем неправильные значения imageFolder
         let correctedImageFolder = token.imageFolder;
         if (correctedImageFolder === 'folders' || correctedImageFolder === 'gray') {
-          console.log('Исправляем imageFolder с', correctedImageFolder, 'на grey');
           correctedImageFolder = 'grey';
         }
         
-        const randomImage = await generateRandomImage(correctedImageFolder);
-        
         const formDataToSet = {
           name: token.name || '',
-          points: token.points || 1,
-          conversionAmount: token.conversionAmount || null,
-          conversionTargetId: token.conversionTargetId || null,
-          backgroundColor: token.backgroundColor || '#9CA3AF',
-          textColor: token.textColor || 'text-white',
-          image: token.image || randomImage || '🎯',
-          imageFolder: correctedImageFolder,
           description: token.description || '',
-          autoDistribution: token.autoDistribution || false,
-          autoDistributionPeriod: token.autoDistributionPeriod || 'month',
-          autoDistributionAmount: token.autoDistributionAmount || 1
+          points: token.points || 0,
+          color: token.color || '#E42E0F',
+          textColor: token.textColor || 'text-white',
+          imageUrl: token.imageUrl || '',
+          imageFolder: correctedImageFolder || 'grey',
+          tokenType: token.tokenType || 'regular',
+          isActive: token.isActive !== undefined ? token.isActive : true
         };
         
-        console.log('Устанавливаем formData:', formDataToSet);
         setFormData(formDataToSet);
-        
-        setDisplayBackgroundColor(extractColorFromGradient(token.backgroundColor));
-        setDisplayTextColor(extractColorFromText(token.textColor));
       } else {
-        // Создание нового токена
-        const randomImage = await generateRandomImage('grey');
-        
         const newFormData = {
           name: '',
-          points: 1,
-          conversionAmount: null,
-          conversionTargetId: null,
-          backgroundColor: '#9CA3AF',
+          description: '',
+          points: 0,
+          color: '#E42E0F',
           textColor: 'text-white',
-          image: randomImage || '🎯',
+          imageUrl: '',
           imageFolder: 'grey',
-          description: generateRandomDescription(),
-          autoDistribution: false,
-          autoDistributionPeriod: 'month',
-          autoDistributionAmount: 1
+          tokenType: 'regular',
+          isActive: true
         };
         
-        console.log('Создаем новый токен с formData:', newFormData);
         setFormData(newFormData);
-        
-        setDisplayBackgroundColor('#9CA3AF');
-        setDisplayTextColor('#FFFFFF');
       }
     };
 
     if (isOpen) {
       initializeForm();
       loadExistingTokens();
-      loadAvailableFolders();
+      loadFolders();
     }
   }, [isOpen, token]);
 
@@ -256,10 +198,6 @@ export default function TokenEditModal({ isOpen, onClose, onSubmit, token = null
     const file = event.target.files[0];
     if (!file) return;
 
-    console.log('File selected for upload:', file);
-    console.log('File type:', file.type);
-    console.log('File size:', file.size);
-
     // Проверяем размер файла (10MB = 10 * 1024 * 1024 bytes)
     const maxSize = 10 * 1024 * 1024;
     if (file.size > maxSize) {
@@ -272,14 +210,7 @@ export default function TokenEditModal({ isOpen, onClose, onSubmit, token = null
       const formData = new FormData();
       formData.append('image', file);
 
-      console.log('FormData created with file');
-      console.log('FormData entries:');
-      for (let [key, value] of formData.entries()) {
-        console.log(key, value);
-      }
-
       const response = await api.uploadTokenImage(formData);
-      console.log('Upload response:', response);
       
       // Обрабатываем разные форматы ответа
       let imageUrl;
@@ -292,8 +223,6 @@ export default function TokenEditModal({ isOpen, onClose, onSubmit, token = null
       } else {
         throw new Error('Неверный формат ответа от сервера');
       }
-
-      console.log('Final image URL:', imageUrl);
 
       setFormData(prev => ({
         ...prev,
@@ -317,11 +246,7 @@ export default function TokenEditModal({ isOpen, onClose, onSubmit, token = null
   };
 
   const handleRandomImage = async (folder) => {
-    console.log('Кнопка "Случайное" нажата для папки:', folder);
-    console.log('Текущая папка:', formData.imageFolder);
-    console.log('Тип папки:', typeof formData.imageFolder);
     const randomImage = await generateRandomImage(folder);
-    console.log('Получено случайное изображение:', randomImage);
     setFormData(prev => ({ 
       ...prev, 
       image: randomImage || '🎯' // Если null, используем эмодзи

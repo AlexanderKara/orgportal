@@ -6,6 +6,8 @@ import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import api from '../services/api';
 import Select from 'react-select';
 import Avatar from '../components/ui/Avatar';
+import EmployeeCard from '../components/EmployeeCard';
+import EmployeeModal from '../components/EmployeeModal';
 import { calculateTimeInTeam, formatDate, getPointsText } from '../utils/dateUtils';
 import { useAuth } from '../contexts/AuthContext';
 import { useRole } from '../components/RoleProvider';
@@ -131,6 +133,162 @@ export default function Structure() {
   const [error, setError] = useState(null);
   const [ratingData, setRatingData] = useState([]);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [isEmployeeModalOpen, setIsEmployeeModalOpen] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState(null);
+
+  // Функция для обработки редактирования сотрудника
+  const handleEditEmployee = (employee) => {
+    setEditingEmployee(employee);
+    setIsEmployeeModalOpen(true);
+  };
+
+  // Функция для закрытия модального окна
+  const handleCloseEmployeeModal = () => {
+    setIsEmployeeModalOpen(false);
+    setEditingEmployee(null);
+  };
+
+  // Функция для обработки сохранения сотрудника
+  const handleSaveEmployee = async (employeeData) => {
+    try {
+      if (editingEmployee) {
+        // Создаем объект только с измененными полями
+        const updateData = {};
+        
+        // Проверяем каждое поле на изменения
+        if (employeeData.changedFields?.has('firstName')) {
+          updateData.first_name = employeeData.firstName;
+        }
+        if (employeeData.changedFields?.has('lastName')) {
+          updateData.last_name = employeeData.lastName;
+        }
+        if (employeeData.changedFields?.has('email')) {
+          updateData.email = employeeData.email;
+        }
+        if (employeeData.changedFields?.has('phone')) {
+          updateData.phone = employeeData.phone;
+        }
+        if (employeeData.changedFields?.has('telegram')) {
+          updateData.telegram = employeeData.telegram;
+        }
+        if (employeeData.changedFields?.has('hireDate')) {
+          updateData.hire_date = employeeData.hireDate;
+        }
+        if (employeeData.changedFields?.has('birthDate')) {
+          updateData.birth_date = employeeData.birthDate;
+        }
+        if (employeeData.changedFields?.has('department')) {
+          updateData.department_id = employeeData.department;
+        }
+        if (employeeData.changedFields?.has('role')) {
+          updateData.department_role = employeeData.role;
+        }
+        if (employeeData.changedFields?.has('competencies')) {
+          updateData.competencies = employeeData.competencies;
+        }
+        if (employeeData.changedFields?.has('notes')) {
+          updateData.notes = employeeData.notes;
+        }
+        
+        // Обновляем только если есть изменения в основных полях
+        if (Object.keys(updateData).length > 0) {
+          console.log('Обновляем поля сотрудника:', updateData);
+          await api.updateEmployee(editingEmployee.id, updateData);
+        } else {
+          console.log('Основные поля не изменились, пропускаем обновление');
+        }
+
+        // Сохраняем навыки только если они изменились
+        if (employeeData.skills && employeeData.skillsChanged) {
+          console.log('Навыки изменились, обновляем...');
+          
+          // Получаем текущие навыки сотрудника
+          const existingSkills = editingEmployee.employeeSkills || [];
+          const existingSkillIds = new Set(existingSkills.map(es => es.skill.id));
+          
+          // Получаем новые навыки
+          const allSkills = [
+            ...employeeData.skills.hardSkills,
+            ...employeeData.skills.softSkills,
+            ...employeeData.skills.hobbies
+          ];
+          
+          // Фильтруем только валидные навыки
+          const validSkills = allSkills.filter(skill => skill && skill.value && skill.value !== '' && skill.value !== null && skill.value !== undefined);
+          const newSkillIds = new Set(validSkills.map(skill => skill.value));
+          
+          // Удаляем навыки, которых больше нет
+          for (const existingSkill of existingSkills) {
+            if (!newSkillIds.has(existingSkill.skill.id)) {
+              try {
+                await api.removeEmployeeSkill(editingEmployee.id, existingSkill.skill.id);
+                console.log('Удален навык:', existingSkill.skill.name);
+              } catch (err) {
+                console.error('Ошибка при удалении навыка:', existingSkill.skill.name, err);
+              }
+            }
+          }
+          
+          // Добавляем новые навыки
+          for (const skill of validSkills) {
+            if (!existingSkillIds.has(skill.value)) {
+              try {
+                await api.addEmployeeSkill(editingEmployee.id, skill.value, skill.level || 1);
+                console.log('Добавлен навык:', skill.label);
+              } catch (err) {
+                console.error('Ошибка при добавлении навыка:', skill.label, err);
+              }
+            }
+          }
+        }
+      }
+      
+      // Перезагружаем данные
+      const loadData = async () => {
+        try {
+          const [employeesResponse, departmentsResponse, vacationsResponse] = await Promise.all([
+            api.getEmployees(),
+            api.getDepartments(),
+            api.request('/api/vacations')
+          ]);
+          
+          const employees = employeesResponse.data || employeesResponse || [];
+          const departments = departmentsResponse.departments || departmentsResponse.data || departmentsResponse || [];
+          const vacations = vacationsResponse.vacations || vacationsResponse || [];
+          
+          // Обрабатываем данные сотрудников для совместимости с фронтендом
+          const processedEmployees = employees.map(emp => {
+            const employeeVacations = vacations.filter(v => v.employee_id === emp.id);
+            
+            return {
+              ...emp,
+              // Обеспечиваем совместимость с существующим кодом
+              name: emp.full_name || `${emp.first_name || ''} ${emp.last_name || ''}`.trim(),
+              birth: emp.birth_date,
+              joined: emp.hire_date,
+              department: emp.department?.name || '',
+              department_id: emp.department_id,
+              roleInDept: emp.department_role,
+              competencies: emp.competencies ? normalizeCompetencies(emp.competencies) : [],
+              vacations: employeeVacations,
+              wishlist: emp.wishlist_url || emp.wishlist,
+              status: emp.status || 'active'
+            };
+          });
+          
+          setAllEmployees(processedEmployees);
+          setDepartments(departments);
+        } catch (err) {
+          console.error('Ошибка перезагрузки данных:', err);
+        }
+      };
+      
+      await loadData();
+      handleCloseEmployeeModal();
+    } catch (error) {
+      console.error('Ошибка сохранения сотрудника:', error);
+    }
+  };
 
   useEffect(() => {
     const loadData = async () => {
@@ -148,46 +306,60 @@ export default function Structure() {
         const departments = departmentsResponse.departments || departmentsResponse.data || departmentsResponse || [];
         const vacations = vacationsResponse.vacations || vacationsResponse || [];
         
+        // Временная отладка для проверки данных отпусков
+        console.log('Vacations data:', vacations);
+        console.log('Employee with ID 1:', employees.find(emp => emp.id === 1));
+        
+        // Проверяем department_id у Александра Карабчука
+        const employee1 = employees.find(emp => emp.id === 1);
+        if (employee1) {
+          console.log('Employee 1 department_id:', employee1.department_id);
+          console.log('Employee 1 department:', employee1.department);
+          console.log('Available departments:', departments);
+        }
+        
+        // Проверяем структуру данных отпусков
+        if (vacations.length > 0) {
+          console.log('First vacation structure:', vacations[0]);
+          console.log('Vacation employee_id:', vacations[0].employee_id);
+          console.log('Vacation start_date:', vacations[0].start_date);
+          console.log('Vacation end_date:', vacations[0].end_date);
+        }
+        
         // Обрабатываем данные сотрудников для совместимости с фронтендом
-        const processedEmployees = employees.map(emp => ({
-          ...emp,
-          // Обеспечиваем совместимость с существующим кодом
-          name: emp.full_name || `${emp.first_name || ''} ${emp.last_name || ''}`.trim(),
-          birth: emp.birth_date,
-          joined: emp.hire_date,
-          department: emp.department?.name || '',
-          department_id: emp.department_id,
-          roleInDept: emp.department_role,
-          competencies: emp.competencies ? normalizeCompetencies(emp.competencies) : [],
-          vacations: vacations.filter(v => v.employee_id === emp.id) || [],
-          wishlist: emp.wishlist_url || emp.wishlist,
-          status: emp.status || 'active'
-        }));
+        const processedEmployees = employees.map(emp => {
+          const employeeVacations = vacations.filter(v => v.employee_id === emp.id);
+          console.log(`Employee ${emp.id} (${emp.first_name} ${emp.last_name}) vacations:`, employeeVacations);
+          
+          return {
+            ...emp,
+            // Обеспечиваем совместимость с существующим кодом
+            name: emp.full_name || `${emp.first_name || ''} ${emp.last_name || ''}`.trim(),
+            birth: emp.birth_date,
+            joined: emp.hire_date,
+            department: emp.department?.name || '',
+            department_id: emp.department_id,
+            roleInDept: emp.department_role,
+            competencies: emp.competencies ? normalizeCompetencies(emp.competencies) : [],
+            vacations: employeeVacations,
+            wishlist: emp.wishlist_url || emp.wishlist,
+            status: emp.status || 'active'
+          };
+        });
         
         setAllEmployees(processedEmployees);
         setDepartments(departments);
-        
-        // Временная отладка для сотрудника с ID 1
-        const employee1 = processedEmployees.find(emp => emp.id === 1);
-        if (employee1) {
-          console.log('Employee 1 data:', employee1);
-          console.log('Employee 1 wishlist:', employee1.wishlist);
-          console.log('Employee 1 wishlist_url:', employee1.wishlist_url);
-        }
         
         // Загружаем рейтинг данные если нужно
         if (urlView === 'rating') {
           try {
             const ratingResponse = await api.request('/api/tokens/top');
-            console.log('Rating data loaded:', ratingResponse);
             setRatingData(ratingResponse || []);
           } catch (ratingError) {
-            console.warn('Failed to load rating data:', ratingError);
             setRatingData([]);
           }
         }
       } catch (err) {
-        console.error('Error loading structure data:', err);
         setError(err.message || 'Ошибка загрузки данных');
       } finally {
         setLoading(false);
@@ -252,6 +424,14 @@ export default function Structure() {
       (!roleFilter || e.role === roleFilter)
     );
 
+    // Отладка для страницы vacations
+    if (view === 'vacations') {
+      console.log('All employees count:', allEmployees.length);
+      console.log('Filtered employees count:', filtered.length);
+      console.log('Employees with vacations:', allEmployees.filter(e => e.vacations && e.vacations.length > 0));
+      console.log('Filtered employees with vacations:', filtered.filter(e => e.vacations && e.vacations.length > 0));
+    }
+
     if (sort === 'alphabet') {
       filtered = filtered.sort((a, b) => {
         const nameA = `${a.first_name || ''} ${a.last_name || ''}`.trim() || a.full_name || a.name || '';
@@ -268,13 +448,11 @@ export default function Structure() {
       filtered = filtered.sort((a, b) => (a.department_id || 0) - (b.department_id || 0));
     } else if (sort === 'rating') {
       // Сортируем по рейтингу
-      console.log('Sorting by rating, ratingData:', ratingData);
       filtered = filtered.sort((a, b) => {
         const aRating = ratingData.find(r => r.id === a.id);
         const bRating = ratingData.find(r => r.id === b.id);
         const aPoints = aRating ? aRating.totalPoints || 0 : 0;
         const bPoints = bRating ? bRating.totalPoints || 0 : 0;
-        console.log(`Comparing ${a.first_name} ${a.last_name} (${aPoints}) vs ${b.first_name} ${b.last_name} (${bPoints})`);
         return bPoints - aPoints; // По убыванию
       });
     }
@@ -284,7 +462,7 @@ export default function Structure() {
     }
 
     return filtered;
-  }, [status, search, departmentFilter, roleFilter, sort, sortDirection, ratingData]);
+  }, [status, search, departmentFilter, roleFilter, sort, sortDirection, ratingData, view]);
 
   // Статистика
   const stats = useMemo(() => {
@@ -366,7 +544,7 @@ export default function Structure() {
       </div>
 
       {/* Статистика */}
-      <div className="hidden md:grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div className="analytics-grid mb-6">
         <div className="bg-white rounded-[15px] border border-gray/50 p-4">
           <div className="flex items-center gap-2 mb-2">
             <Users className="w-5 h-5 text-primary" />
@@ -521,6 +699,7 @@ export default function Structure() {
               view={sort} 
               allEmployees={allEmployees}
               ratingData={ratingData}
+              onEditEmployee={handleEditEmployee}
             />
           ))}
         </div>
@@ -533,11 +712,9 @@ export default function Structure() {
                 {group}
                 <span className="text-sm font-normal text-gray-500">({emps.length})</span>
               </div>
-              <div className="flex gap-2 sm:gap-4 flex-wrap pb-2 items-stretch">
+              <div className="employee-grid pb-2">
                 {emps.map(emp => (
-                  <div key={emp.id} className="w-[200px] sm:w-[220px]">
-                    <EmployeeCard employee={emp} view={sort} vacationIntervals={[]} ratingData={ratingData} />
-                  </div>
+                  <StructureEmployeeCard key={emp.id} employee={emp} view={sort} vacationIntervals={[]} ratingData={ratingData} onEditEmployee={handleEditEmployee} />
                 ))}
               </div>
             </div>
@@ -552,11 +729,9 @@ export default function Structure() {
                 {group}
                 <span className="text-sm font-normal text-gray-500">({emps.length})</span>
               </div>
-              <div className="flex gap-2 sm:gap-4 flex-wrap pb-2 items-stretch">
+              <div className="employee-grid pb-2">
                 {emps.map(emp => (
-                  <div key={emp.id} className="w-[200px] sm:w-[220px]">
-                    <EmployeeCard employee={emp} view={sort} vacationIntervals={[]} ratingData={ratingData} />
-                  </div>
+                  <StructureEmployeeCard key={emp.id} employee={emp} view={sort} vacationIntervals={[]} ratingData={ratingData} onEditEmployee={handleEditEmployee} />
                 ))}
               </div>
             </div>
@@ -589,11 +764,9 @@ export default function Structure() {
                   {month}
                   <span className="text-sm font-normal text-gray-500">({emps.length})</span>
                 </div>
-                <div className="flex gap-2 sm:gap-4 flex-wrap pb-2 items-stretch">
+                <div className="employee-grid pb-2">
                   {emps.map(emp => (
-                    <div key={emp.id} className="w-[200px] sm:w-[220px]">
-                      <EmployeeCard employee={emp} view={sort} vacationIntervals={[]} ratingData={ratingData} />
-                    </div>
+                    <StructureEmployeeCard key={emp.id} employee={emp} view={sort} vacationIntervals={[]} ratingData={ratingData} onEditEmployee={handleEditEmployee} />
                   ))}
                 </div>
               </div>
@@ -627,20 +800,18 @@ export default function Structure() {
                   {month}
                   <span className="text-sm font-normal text-gray-500">({emps.length})</span>
                 </div>
-                <div className="flex gap-2 sm:gap-4 flex-wrap pb-2 items-stretch">
+                <div className="employee-grid pb-2">
                   {emps.map(emp => {
                     // Найти все отпуска сотрудника в этом месяце
                     const intervals = (emp.vacations || [])
-                      .filter(v => Number(v.start.split('-')[1]) === (['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'].indexOf(month)+1))
+                      .filter(v => Number(v.start_date.split('-')[1]) === (['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'].indexOf(month)+1))
                       .map(v => {
-                        const start = formatDate(v.start, true);
-                        const end = formatDate(v.end, true);
+                        const start = formatDate(v.start_date, true);
+                        const end = formatDate(v.end_date, true);
                         return start === end ? start : `${start}-${end}`;
                       });
                     return (
-                      <div key={emp.id} className="w-[200px] sm:w-[220px]">
-                        <EmployeeCard employee={emp} view={sort} vacationIntervals={intervals} ratingData={ratingData} />
-                      </div>
+                      <StructureEmployeeCard key={emp.id} employee={emp} view={sort} vacationIntervals={intervals} ratingData={ratingData} onEditEmployee={handleEditEmployee} />
                     );
                   })}
                 </div>
@@ -673,11 +844,9 @@ export default function Structure() {
                   {group}
                   <span className="text-sm font-normal text-gray-500">({emps.length})</span>
                 </div>
-                <div className="flex gap-2 sm:gap-4 flex-wrap pb-2 items-stretch">
+                <div className="employee-grid pb-2">
                   {emps.map(emp => (
-                    <div key={emp.id} className="w-[200px] sm:w-[220px]">
-                      <EmployeeCard employee={emp} view={sort} vacationIntervals={[]} ratingData={ratingData} />
-                    </div>
+                    <StructureEmployeeCard key={emp.id} employee={emp} view={sort} vacationIntervals={[]} ratingData={ratingData} onEditEmployee={handleEditEmployee} />
                   ))}
                 </div>
               </div>
@@ -687,17 +856,32 @@ export default function Structure() {
       )}
       </>
       )}
+      
+      {/* Модальное окно редактирования сотрудника */}
+      <EmployeeModal
+        isOpen={isEmployeeModalOpen}
+        onClose={handleCloseEmployeeModal}
+        onSubmit={handleSaveEmployee}
+        editingEmployee={editingEmployee}
+        existingEmployees={allEmployees}
+      />
     </div>
   );
 }
 
-function DepartmentCard({ dept, search, status, view, allEmployees, ratingData = [] }) {
+function DepartmentCard({ dept, search, status, view, allEmployees, ratingData = [], onEditEmployee }) {
   const navigate = useNavigate();
   const { userData, activeRole } = useAuth();
   const { hasAdminMenu } = useRole();
   
   // Получаем сотрудников отдела из обработанных данных
   const deptEmployees = allEmployees.filter(e => e.department_id === dept.id);
+  
+  // Отладка для страницы vacations
+  if (view === 'vacations') {
+    console.log(`Department ${dept.name} (ID: ${dept.id}) employees:`, deptEmployees.length);
+    console.log(`Department ${dept.name} employees with vacations:`, deptEmployees.filter(e => e.vacations && e.vacations.length > 0));
+  }
   
   // Определяем, есть ли права на редактирование отделов
   const hasDepartmentEditRights = hasAdminMenu && userData?.adminRoles?.some(role => 
@@ -729,8 +913,8 @@ function DepartmentCard({ dept, search, status, view, allEmployees, ratingData =
   // Если нет сотрудников после фильтрации, показываем сообщение
   if (employeesSorted.length === 0) {
     return (
-      <div className="flex flex-col md:flex-row bg-transparent rounded-[15px] border border-gray/50 p-2 sm:p-[25px] gap-2 sm:gap-[30px] w-full items-stretch min-h-[180px]">
-        <div className="flex-1 min-w-0 sm:min-w-[220px] md:max-w-[510px] flex flex-col gap-1 sm:gap-2 justify-center">
+      <div className="department-layout bg-transparent w-full min-h-[180px]">
+        <div className="department-info flex flex-col gap-1 sm:gap-2 justify-center">
           <div className="flex items-center gap-2 mb-1">
             {/* {getDepartmentIcon(dept.icon)} */}
             <span className="text-xl font-accent text-dark font-bold">{dept.name}</span>
@@ -749,7 +933,7 @@ function DepartmentCard({ dept, search, status, view, allEmployees, ratingData =
             </ul>
           </div>
         </div>
-        <div className="flex-1 flex items-center justify-center">
+        <div className="department-employees flex items-center justify-center">
           <div className="text-gray-500 text-center">
             {search.trim() !== '' ? 'Нет сотрудников по запросу' : 'Нет сотрудников в отделе'}
           </div>
@@ -759,7 +943,7 @@ function DepartmentCard({ dept, search, status, view, allEmployees, ratingData =
   }
 
   return (
-    <div className="flex flex-col md:flex-row bg-transparent rounded-[15px] border border-gray/50 p-2 sm:p-[25px] gap-2 sm:gap-[50px] w-full items-stretch min-h-[180px] relative group">
+    <div className="department-layout bg-transparent w-full min-h-[180px] relative group">
       {/* Иконка редактирования для администраторов */}
       {hasDepartmentEditRights && (
         <div 
@@ -774,7 +958,7 @@ function DepartmentCard({ dept, search, status, view, allEmployees, ratingData =
         </div>
       )}
       {/* Левая часть */}
-      <div className="flex-1 min-w-0 sm:min-w-[220px] md:max-w-[510px] flex flex-col gap-1 sm:gap-2 justify-center h-full">
+      <div className="department-info flex flex-col gap-1 sm:gap-2 justify-center">
         <div className="flex items-center gap-2 mb-1">
           {/* {getDepartmentIcon(dept.icon)} */}
           <span className="text-xl font-accent text-dark font-bold">{dept.name}</span>
@@ -795,37 +979,46 @@ function DepartmentCard({ dept, search, status, view, allEmployees, ratingData =
         </div>
       </div>
       {/* Правая часть — сотрудники */}
-      <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-4 items-stretch justify-start h-full"
-        style={{ alignItems: 'stretch', gridAutoRows: '1fr' }}
-      >
-        {employeesSorted.map((emp) => (
-          <EmployeeCard 
-            key={emp.id} 
-            employee={emp} 
-            view={view} 
-            vacationIntervals={[]}
-            ratingData={ratingData}
-          />
-        ))}
+      <div className="department-employees employee-grid">
+        {employeesSorted.map((emp) => {
+          // Формируем интервалы отпусков для сотрудника
+          const vacationIntervals = emp.vacations && emp.vacations.length > 0 
+            ? emp.vacations.map(vacation => {
+                const startDate = new Date(vacation.start_date);
+                const endDate = new Date(vacation.end_date);
+                const startFormatted = `${startDate.getDate().toString().padStart(2, '0')}.${(startDate.getMonth() + 1).toString().padStart(2, '0')}`;
+                const endFormatted = `${endDate.getDate().toString().padStart(2, '0')}.${(endDate.getMonth() + 1).toString().padStart(2, '0')}`;
+                
+                // Если даты одинаковые, показываем только одну дату
+                if (startFormatted === endFormatted) {
+                  return startFormatted;
+                } else {
+                  return `${startFormatted}-${endFormatted}`;
+                }
+              })
+            : [];
+
+          return (
+            <StructureEmployeeCard 
+              key={emp.id} 
+              employee={emp} 
+              view={view} 
+              vacationIntervals={vacationIntervals}
+              ratingData={ratingData}
+              onEditEmployee={onEditEmployee}
+            />
+          );
+        })}
       </div>
     </div>
   );
 }
 
-function EmployeeCard({ employee, view, vacationIntervals, ratingData = [] }) {
+// Компонент-обертка для использования нового EmployeeCard в контексте Structure
+function StructureEmployeeCard({ employee, view, vacationIntervals, ratingData = [], onEditEmployee }) {
   const navigate = useNavigate();
-  const { userData, activeRole } = useAuth();
-  const { hasAdminMenu } = useRole();
   
   if (!employee) return <div className="p-4 text-center text-gray-500">Нет данных о сотруднике</div>;
-  
-  // Определяем, есть ли права на редактирование сотрудников
-  const hasEmployeeEditRights = hasAdminMenu && userData?.adminRoles?.some(role => 
-    role.id.toString() === activeRole && (
-      role.name === 'Главный администратор' || 
-      (role.permissions && role.permissions.includes('employees'))
-    )
-  );
   
   const handleClick = () => {
     if (employee.id) navigate(`/employee/${employee.id}`);
@@ -835,126 +1028,59 @@ function EmployeeCard({ employee, view, vacationIntervals, ratingData = [] }) {
   const employeeRating = ratingData.find(r => r.id === employee.id);
   const totalPoints = employeeRating ? employeeRating.totalPoints || 0 : 0;
   const achievements = employeeRating ? employeeRating.achievements || 0 : 0;
+
+  // Формируем унифицированную дополнительную информацию для всех представлений (кроме отделов)
+  let additionalInfo = '';
+  let departmentInfo = '';
+  let teamInfo = '';
+  let ratingInfo = '';
+  let vacationInfo = '';
   
-  // Отладочная информация для рейтинга
-  if (view === 'rating') {
-    console.log(`Employee ${employee.id} (${employee.first_name} ${employee.last_name}):`, {
-      employeeRating,
-      totalPoints,
-      achievements,
-      ratingDataLength: ratingData.length
-    });
+  if (view !== 'departments') {
+    // Отдел
+    if (employee.department) {
+      departmentInfo = employee.department;
+    }
+    
+    // Дата приема (если есть)
+    if (employee.joined) {
+      teamInfo = calculateTimeInTeam(employee.joined);
+    }
+    
+    // Рейтинг (если есть)
+    if (totalPoints > 0) {
+      ratingInfo = `${getPointsText(totalPoints)} • ${achievements} достижений`;
+    }
+  }
+  
+  // Отпуска (для всех представлений, включая departments)
+  if (vacationIntervals && vacationIntervals.length > 0) {
+    vacationInfo = vacationIntervals.join(', ');
   }
 
-  // Определяем уровень рейтинга
-  const getLevel = (points) => {
-    if (points >= 1000) return { name: 'Легенда', color: 'text-purple-600', bgColor: 'bg-purple-100' };
-    if (points >= 500) return { name: 'Мастер', color: 'text-yellow-600', bgColor: 'bg-yellow-100' };
-    if (points >= 200) return { name: 'Эксперт', color: 'text-orange-600', bgColor: 'bg-orange-100' };
-    if (points >= 50) return { name: 'Специалист', color: 'text-blue-600', bgColor: 'bg-blue-100' };
-    return { name: 'Новичок', color: 'text-gray-600', bgColor: 'bg-gray-100' };
+  // Передаем дополнительную информацию через employee объект
+  const enhancedEmployee = {
+    ...employee,
+    additionalInfo,
+    departmentInfo,
+    teamInfo,
+    ratingInfo,
+    vacationInfo,
+    showCompetencies: view === 'departments'
   };
 
-  const level = getLevel(totalPoints);
-
-  return (
-    <div
-      className="flex flex-col items-center rounded-[15px] p-2 sm:p-4 pt-8 sm:pt-8 w-full min-h-[280px] max-w-full border border-gray/50 transition hover:bg-gray/30 cursor-pointer h-auto flex-grow relative group"
-      style={{ display: 'flex', flexDirection: 'column', height: '100%' }}
-      onClick={handleClick}
-    >
-      {/* Иконка редактирования для администраторов */}
-      {hasEmployeeEditRights && (
-        <div 
-          className="absolute top-2 right-2 z-10 bg-white/90 backdrop-blur-sm rounded-full p-1.5 shadow-md hover:bg-white transition-colors opacity-0 group-hover:opacity-100"
-          onClick={(e) => {
-            e.stopPropagation();
-            navigate(`/admin/employees?edit=${employee.id}`);
-          }}
-          title="Редактировать сотрудника"
-        >
-          <Edit className="w-4 h-4 text-gray-600 hover:text-primary" />
-        </div>
-      )}
-      <Avatar
-        src={employee.avatar}
-        name={`${employee.first_name || ''} ${employee.last_name || ''}`.trim() || employee.full_name || employee.name}
-        size="lg"
-        className="mb-2"
-        roleInDept={employee.roleInDept}
+    return (
+    <div className="relative">
+      <EmployeeCard
+        employee={enhancedEmployee}
+        variant="compact"
+        onClick={handleClick}
+        onEdit={onEditEmployee}
+        showEditButton={true}
+        className="h-full"
       />
-      <div className="font-bold text-dark text-center mb-2">{`${employee.first_name || ''} ${employee.last_name || ''}`.trim() || employee.full_name || employee.name || 'Нет ФИО'}</div>
-      {/* Фиксированное место для роли в отделе - всегда показываем, даже если пустая */}
-      <div className="min-h-[22px] mb-2 flex items-center justify-center">
-        {employee.roleInDept && employee.roleInDept.length > 0 ? (
-          <div className="text-xs rounded-[12px] px-2 py-0.5 text-center text-white bg-primary/90">
-            {getRoleText(employee.roleInDept)}
-          </div>
-        ) : (
-          <div className="text-xs text-transparent">—</div>
-        )}
-      </div>
-      <div className="text-xs text-gray-500 text-center mb-2 min-h-[16px]">
-        {view === 'vacations' && (employee.department || '—')}
-        {view === 'birthdays' && (employee.department || '—')}
-        {view === 'alphabet' && (employee.department || '—')}
-        {view === 'joined' && (employee.department || '—')}
-        {view === 'rating' && (employee.department || '—')}
-      </div>
-      {/* Дополнительная информация для каждого представления */}
-      {view === 'vacations' && vacationIntervals && vacationIntervals.length > 0 && (
-        <div className="text-xs text-gray-500 text-center mb-2 min-h-[16px]">{vacationIntervals.join(', ')}</div>
-      )}
-      {view === 'birthdays' && (
-        <div className="text-xs text-gray-700 text-center mb-2 min-h-[16px] flex items-center justify-center">
-          {employee.birth ? formatDate(employee.birth) : 'Нет данных о дате рождения'}
-          {employee.wishlist && employee.wishlist.trim() !== '' && (
-            <a href={employee.wishlist} target="_blank" rel="noopener noreferrer" className="ml-2 text-primary flex items-center align-middle" onClick={e => e.stopPropagation()} title="Вишлист" style={{lineHeight: 1}}>
-              <Gift className="w-4 h-4 inline align-middle" />
-            </a>
-          )}
-          {/* Временная отладка */}
-          {employee.id === 1 && (
-            <div className="text-xs text-red-500">
-              Debug: wishlist="{employee.wishlist}", wishlist_url="{employee.wishlist_url}"
-            </div>
-          )}
-        </div>
-      )}
-      {view === 'joined' && (
-        <div className="text-xs text-gray-700 text-center mb-2 min-h-[16px]">
-          {employee.joined ? `В команде: ${calculateTimeInTeam(employee.joined)}` : 'Нет данных о дате вступления'}
-        </div>
-      )}
-      {view === 'rating' && (
-        <div className="text-xs text-center mb-2 min-h-[16px] space-y-1">
-          <div className="text-sm font-bold text-gray-900">
-            {getPointsText(totalPoints)}
-          </div>
-          <div className="text-xs text-gray-500">
-            {achievements} достижений
-          </div>
-        </div>
-      )}
-      {/* Ключевые компетенции - только для представления "отделы", в конце карточки */}
-      {view === 'departments' && Array.isArray(employee.competencies) && employee.competencies.length > 0 && (
-        <div className="text-xs text-gray-600 mb-2 w-full flex-1 overflow-visible">
-          <ul className="text-left list-none pl-2">
-            {employee.competencies.map((comp, index) => (
-              <li key={index} className="flex items-start justify-start mb-1">
-                <div className="mt-[3px]">
-                  <StarBullet />
-                </div>
-                <span className="text-left ml-1">{comp}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-      {/* Пустое место для представления "отделы" чтобы компенсировать компетенции */}
-      {view === 'departments' && (!Array.isArray(employee.competencies) || employee.competencies.length === 0) && (
-        <div className="text-xs text-gray-600 mb-2 w-full min-h-[48px] flex-1"></div>
-      )}
+      
+
     </div>
   );
 }
@@ -996,20 +1122,26 @@ function groupEmployees(employees, sort, ratingData = []) {
     // Группировка по месяцу начала отпуска
     const months = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
     const groups = {};
+    console.log('groupEmployees отпуска - сотрудники с отпусками:', employees.filter(e => e.vacations && e.vacations.length > 0));
+    
     employees.forEach(e => {
       if (!e.vacations?.length) return;
+      console.log(`Обработка сотрудника ${e.id} (${e.first_name} ${e.last_name}) с ${e.vacations.length} отпусками`);
       e.vacations.forEach(v => {
-        if (!v.start) return;
+        console.log(`Отпуск: дата_начала=${v.start_date}, дата_окончания=${v.end_date}`);
+        if (!v.start_date) return;
         try {
-        const m = Number(v.start.split('-')[1]) - 1;
+        const m = Number(v.start_date.split('-')[1]) - 1;
         const month = months[m] || 'Без даты';
+        console.log(`Индекс месяца: ${m}, название месяца: ${month}`);
         if (!groups[month]) groups[month] = [];
         if (!groups[month].includes(e)) groups[month].push(e);
         } catch (error) {
-          console.warn('Invalid vacation start date:', v.start);
+          console.warn('Некорректная дата начала отпуска:', v.start_date);
         }
       });
     });
+    console.log('Итоговые группы:', groups);
     return months.map(m => [m, groups[m] || []]).filter(([,arr])=>arr.length);
   }
   if (sort === 'joined') {

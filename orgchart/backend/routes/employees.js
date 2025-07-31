@@ -874,7 +874,7 @@ router.get('/telegram-miniapp', async (req, res) => {
       ],
       attributes: ['id', 'first_name', 'last_name', 'position', 'department_id'],
       where: {
-        isActive: true
+        status: 'active'
       },
       order: [['first_name', 'ASC'], ['last_name', 'ASC']]
     });
@@ -909,7 +909,7 @@ router.get('/telegram-id/:telegramId', async (req, res) => {
     const employee = await Employee.findOne({
       where: { 
         telegram_id: telegramId,
-        isActive: true
+        status: 'active'
       },
       include: [
         {

@@ -12,6 +12,171 @@
   .font-accent {
     font-family: 'Jura', sans-serif;
   }
+  
+  /* Фиксированные размеры для карточек сотрудников */
+  .employee-card-base {
+    width: 320px;
+    min-width: 320px;
+    max-width: 320px;
+    height: 400px;
+    min-height: 400px;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  /* Адаптивная сетка для карточек */
+  .employee-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fill, 320px);
+    justify-content: start;
+  }
+  
+  /* Адаптивная сетка для аналитических карточек */
+  .analytics-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fill, 320px);
+    justify-content: start;
+  }
+  
+  /* Адаптивные breakpoints для сетки */
+  @media (min-width: 640px) {
+    .employee-grid {
+      grid-template-columns: repeat(auto-fill, 320px);
+      max-width: calc(2 * 320px + 1 * 1rem);
+    }
+    .analytics-grid {
+      grid-template-columns: repeat(auto-fill, 320px);
+      max-width: calc(2 * 320px + 1 * 1rem);
+    }
+  }
+  
+  @media (min-width: 768px) {
+    .employee-grid {
+      grid-template-columns: repeat(auto-fill, 320px);
+      max-width: calc(3 * 320px + 2 * 1rem);
+    }
+    .analytics-grid {
+      grid-template-columns: repeat(auto-fill, 320px);
+      max-width: calc(3 * 320px + 2 * 1rem);
+    }
+  }
+  
+  @media (min-width: 1024px) {
+    .employee-grid {
+      grid-template-columns: repeat(auto-fill, 320px);
+      max-width: calc(4 * 320px + 3 * 1rem);
+    }
+    .analytics-grid {
+      grid-template-columns: repeat(auto-fill, 320px);
+      max-width: calc(4 * 320px + 3 * 1rem);
+    }
+  }
+  
+  @media (min-width: 1280px) {
+    .employee-grid {
+      grid-template-columns: repeat(auto-fill, 320px);
+      max-width: calc(6 * 320px + 5 * 1rem);
+    }
+    .analytics-grid {
+      grid-template-columns: repeat(auto-fill, 320px);
+      max-width: calc(6 * 320px + 5 * 1rem);
+    }
+  }
+  
+  @media (min-width: 1536px) {
+    .employee-grid {
+      grid-template-columns: repeat(auto-fill, 320px);
+      max-width: calc(8 * 320px + 7 * 1rem);
+    }
+    .analytics-grid {
+      grid-template-columns: repeat(auto-fill, 320px);
+      max-width: calc(8 * 320px + 7 * 1rem);
+    }
+  }
+  
+  /* Layout для отделов */
+  .department-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+  }
+  
+  .department-info {
+    width: 100%;
+    min-width: calc(2 * 320px + 1rem); /* Ширина 2 карточек + промежуток */
+    max-width: calc(2 * 320px + 1rem);
+    overflow: hidden;
+    padding-right: 3rem;
+  }
+  
+  .department-employees {
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
+  }
+  
+  /* Специальная сетка для карточек сотрудников в отделе */
+  .department-employees.employee-grid {
+    grid-template-columns: repeat(auto-fit, 320px);
+    justify-content: start;
+    gap: 1rem;
+  }
+  
+  /* Адаптивные breakpoints для карточек в отделе */
+  @media (min-width: 640px) {
+    .department-employees.employee-grid {
+      grid-template-columns: repeat(auto-fit, 320px);
+    }
+  }
+  
+  @media (min-width: 768px) {
+    .department-employees.employee-grid {
+      grid-template-columns: repeat(auto-fit, 320px);
+    }
+  }
+  
+  @media (min-width: 1024px) {
+    .department-employees.employee-grid {
+      grid-template-columns: repeat(auto-fit, 320px);
+    }
+  }
+  
+  @media (min-width: 1280px) {
+    .department-employees.employee-grid {
+      grid-template-columns: repeat(auto-fit, 320px);
+    }
+  }
+  
+  @media (min-width: 1536px) {
+    .department-employees.employee-grid {
+      grid-template-columns: repeat(auto-fit, 320px);
+    }
+  }
+  
+  @media (min-width: 1024px) {
+    .department-layout {
+      display: grid;
+      grid-template-columns: calc(2 * 320px + 1rem) minmax(0, 1fr);
+      align-items: start;
+      gap: 2rem;
+    }
+  }
+  
+  @media (min-width: 1280px) {
+    .department-layout {
+      grid-template-columns: calc(2 * 320px + 1rem) minmax(0, 1fr);
+      gap: 2rem;
+    }
+  }
+  
+  @media (min-width: 1536px) {
+    .department-layout {
+      grid-template-columns: calc(2 * 320px + 1rem) minmax(0, 1fr);
+      gap: 2rem;
+    }
+  }
 }
 
 @layer utilities {
@@ -150,4 +315,54 @@ body {
 
 .border-corporate-gray {
   border: 1px solid #E5E7EB !important; /* Tailwind gray-300 */
+}
+
+/* Frosted glass effect */
+.frosted-glass {
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Alternative blur approach */
+.frosted-glass-alt {
+  background: rgba(255, 255, 255, 0.15) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  filter: blur(0px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Strong blur effect */
+.frosted-glass-strong {
+  background: rgba(255, 255, 255, 0.05) !important;
+  backdrop-filter: blur(32px) !important;
+  -webkit-backdrop-filter: blur(32px) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Кастомные цвета для решения проблем с Tailwind */
+.bg-dark-gray {
+  background-color: #D9D9D9 !important;
+}
+
+.bg-dark-gray-hover {
+  background-color: #6b7280 !important;
+}
+
+.text-white-custom {
+  color: #ffffff !important;
+}
+
+.text-white-hover {
+  color: #d1d5db !important;
+}
+
+.bg-white-hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.text-gray-pale {
+  color: #9ca3af !important;
 } 

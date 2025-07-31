@@ -5,7 +5,7 @@ module.exports = {
     // Проверяем, существует ли таблица
     const tableExists = await queryInterface.showAllTables();
     if (tableExists.includes('product_types')) {
-      console.log('Table product_types already exists, skipping creation');
+      console.log('Таблица product_types уже существует, пропускаем создание');
       return;
     }
 
@@ -24,13 +24,13 @@ module.exports = {
     try {
       await queryInterface.addIndex('product_types', ['code']);
     } catch (e) {
-      console.log('Index on code already exists');
+              console.log('Индекс по code уже существует');
     }
     
     try {
       await queryInterface.addIndex('product_types', ['name']);
     } catch (e) {
-      console.log('Index on name already exists');
+              console.log('Индекс по name уже существует');
     }
   },
   async down(queryInterface, Sequelize) {

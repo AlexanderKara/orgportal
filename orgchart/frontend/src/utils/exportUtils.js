@@ -99,9 +99,10 @@ export const exportData = (data, filename, format = 'excel', sheets = null, shee
 /**
  * Парсинг Excel файла
  * @param {File} file - файл для парсинга
+ * @param {string} sheetName - имя листа для чтения (по умолчанию первый лист)
  * @returns {Promise<Array>} - массив объектов с данными
  */
-export const parseExcelFile = (file) => {
+export const parseExcelFile = (file, sheetName = null) => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     
@@ -109,8 +110,20 @@ export const parseExcelFile = (file) => {
       try {
         const data = new Uint8Array(e.target.result);
         const workbook = XLSX.read(data, { type: 'array' });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
+        
+        // Определяем имя листа для чтения
+        let targetSheetName = sheetName;
+        if (!targetSheetName) {
+          targetSheetName = workbook.SheetNames[0];
+        }
+        
+        // Проверяем, существует ли указанный лист
+        if (!workbook.SheetNames.includes(targetSheetName)) {
+          reject(new Error(`Лист "${targetSheetName}" не найден. Доступные листы: ${workbook.SheetNames.join(', ')}`));
+          return;
+        }
+        
+        const worksheet = workbook.Sheets[targetSheetName];
         const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
         
         if (jsonData.length < 2) {
@@ -206,14 +219,15 @@ export const parseCSV = (csvData, delimiter = ';') => {
 /**
  * Универсальная функция импорта файла
  * @param {File} file - файл для импорта
+ * @param {string} sheetName - имя листа для чтения (только для Excel)
  * @returns {Promise<Array>} - массив объектов с данными
  */
-export const importFile = (file) => {
+export const importFile = (file, sheetName = null) => {
   return new Promise((resolve, reject) => {
     const extension = file.name.split('.').pop().toLowerCase();
     
     if (extension === 'xlsx' || extension === 'xls') {
-      parseExcelFile(file).then(resolve).catch(reject);
+      parseExcelFile(file, sheetName).then(resolve).catch(reject);
     } else if (extension === 'csv') {
       const reader = new FileReader();
       reader.onload = (e) => {

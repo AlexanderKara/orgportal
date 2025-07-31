@@ -28,4 +28,10 @@ export { default as AvatarUpload } from './AvatarUpload';
 export { default as AppSettings } from './AppSettings';
 
 // Error handling
-export { default as ErrorBlock } from './ErrorBlock'; 
+export { default as ErrorBlock } from './ErrorBlock';
+
+// Page components
+export { default as PageHeader } from './PageHeader';
+export { default as Toolbar } from './Toolbar';
+export { default as SearchInput } from './SearchInput';
+export { default as SortControl } from './SortControl'; 

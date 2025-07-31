@@ -8,7 +8,7 @@ import { showNotification } from '../utils/notifications';
 
 export default function Auth() {
   const [login, setLogin] = useState('');
-  const [code, setCode] = useState(['', '', '', '']);
+  const [code, setCode] = useState(['', '', '', '', '', '']);
   const [isCodeSent, setIsCodeSent] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [rememberedUser, setRememberedUser] = useState(null);
@@ -35,7 +35,6 @@ export default function Auth() {
   useEffect(() => {
     window.onTelegramAuth = async (user) => {
       try {
-        console.log('Telegram auth user:', user);
         
         const response = await fetch('/api/auth/telegram-login', {
           method: 'POST',
@@ -262,11 +261,22 @@ export default function Auth() {
     newCode[index] = value;
     setCode(newCode);
     
-    if (value && index < 3) {
+    if (value && index < 5) {
       const nextInput = document.getElementById(`code-${index + 1}`);
       if (nextInput) {
         nextInput.focus();
       }
+    }
+    
+    // Автоматическая отправка кода при вводе последнего символа
+    if (value && index === 5) {
+      setTimeout(() => {
+        const finalCode = newCode.join('');
+        console.log('Автоматическая отправка кода:', finalCode);
+        if (finalCode.length === 6) {
+          handleVerifyCodeWithCode(finalCode);
+        }
+      }, 100);
     }
   };
 
@@ -282,17 +292,24 @@ export default function Auth() {
   const handleCodePaste = (e) => {
     e.preventDefault();
     const pastedData = e.clipboardData.getData('text');
-    const numbers = pastedData.replace(/\D/g, '').slice(0, 4);
+    const numbers = pastedData.replace(/\D/g, '').slice(0, 6);
     
-    if (numbers.length === 4) {
+    if (numbers.length === 6) {
       const newCode = numbers.split('');
       setCode(newCode);
+      
+      // Автоматическая отправка кода при вставке
+      setTimeout(() => {
+        console.log('Автоматическая отправка кода при вставке:', numbers);
+        handleVerifyCodeWithCode(numbers);
+      }, 100);
     }
   };
 
-  const handleVerifyCode = async () => {
-    const fullCode = code.join('');
-    if (fullCode.length !== 4) return;
+  const handleVerifyCodeWithCode = async (fullCode) => {
+    console.log('handleVerifyCodeWithCode вызвана с кодом:', fullCode);
+    console.log('login:', login);
+    if (fullCode.length !== 6) return;
 
     setIsLoading(true);
 
@@ -310,15 +327,44 @@ export default function Auth() {
         navigate('/home');
       } else {
         showNotification(response.message || 'Неверный код', 'error');
-        setCode(['', '', '', '']);
+        setCode(['', '', '', '', '', '']);
         document.getElementById('code-0')?.focus();
       }
     } catch (error) {
-      setNotification({ 
-        type: 'error', 
-        message: error.message || 'Ошибка верификации кода' 
-      });
-      setCode(['', '', '', '']);
+      showNotification(error.message || 'Ошибка верификации кода', 'error');
+      setCode(['', '', '', '', '', '']);
+      document.getElementById('code-0')?.focus();
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyCode = async () => {
+    const fullCode = code.join('');
+    if (fullCode.length !== 6) return;
+
+    setIsLoading(true);
+
+    try {
+      const response = await api.verifyCode(login, fullCode);
+      
+      if (response.success) {
+        localStorage.setItem('token', response.token);
+        
+        if (rememberedUser) {
+          localStorage.setItem('rememberedUser', JSON.stringify(rememberedUser));
+        }
+        
+        await authLogin(response.token, response.employee || response.user);
+        navigate('/home');
+      } else {
+        showNotification(response.message || 'Неверный код', 'error');
+        setCode(['', '', '', '', '', '']);
+        document.getElementById('code-0')?.focus();
+      }
+    } catch (error) {
+      showNotification(error.message || 'Ошибка верификации кода', 'error');
+      setCode(['', '', '', '', '', '']);
       document.getElementById('code-0')?.focus();
     } finally {
       setIsLoading(false);
@@ -327,10 +373,9 @@ export default function Auth() {
 
   const handleBackToLogin = () => {
     setIsCodeSent(false);
-    setCode(['', '', '', '']);
+    setCode(['', '', '', '', '', '']);
     setIsCountdownActive(false);
     setCountdown(60);
-    setNotification({ type: '', message: '' });
   };
 
   const handleResetUser = () => {
@@ -379,10 +424,7 @@ export default function Auth() {
 
   const handleConfirmAltLogin = async (value) => {
     if (!value.trim()) {
-      setNotification({ 
-        type: 'error', 
-        message: 'Введите значение' 
-      });
+      showNotification('Введите значение', 'error');
       return;
     }
     
@@ -429,12 +471,12 @@ export default function Auth() {
   }, [rememberedUser]);
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 relative overflow-hidden">
+          <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
       {/* Particles Background */}
       <ParticlesBackground enabled={true} isDark={false} />
 
       {/* Разворачивающаяся карточка */}
-      <div className="flip-card w-full max-w-md mx-4 h-[500px] perspective-1000 backdrop-blur-xl bg-white/20 rounded-[20px] border border-white/30 relative z-50">
+      <div className="flip-card w-full max-w-md mx-4 h-[500px] perspective-1000 rounded-[20px] border border-white/30 relative z-50 backdrop-blur-sm">
         <div 
           className="flip-card-inner relative w-full h-[500px] transition-transform duration-700"
           style={{
@@ -443,8 +485,8 @@ export default function Auth() {
           }}
         >
           {/* Лицевая сторона - существующая форма авторизации */}
-          <div className="flip-card-front absolute w-full h-[500px] backface-hidden">
-            <div className="rounded-[20px] shadow-2xl p-6 sm:p-8 w-full h-full flex flex-col justify-between relative z-10">
+          <div className="flip-card-front absolute w-full h-[500px]">
+            <div className="rounded-[20px] shadow-2xl p-6 sm:p-8 w-full h-full flex flex-col justify-between relative z-10 backdrop-blur-sm">
               <div className="flex-1 flex flex-col items-center justify-center w-full">
                 {/* Кнопка закрытия */}
                 <button
@@ -483,7 +525,7 @@ export default function Auth() {
                             className={`h-12 rounded-[8px] flex items-center justify-center transition-all duration-500 ease-in-out font-medium ${
                               expanded === 'left'
                                 ? 'bg-primary text-white shadow-lg scale-105'
-                                : 'bg-white/50 text-gray-600 hover:bg-white/70'
+                                : 'bg-white/30 text-gray-600 hover:bg-white/50'
                             }`}
                             onClick={() => handleExpand('left')}
                             style={{ flex: showLeftText ? 1 : 0.3 }}
@@ -502,7 +544,7 @@ export default function Auth() {
                             className={`h-12 rounded-[8px] flex items-center justify-center transition-all duration-500 ease-in-out font-medium ${
                               expanded === 'right'
                                 ? 'bg-primary text-white shadow-lg scale-105'
-                                : 'bg-white/50 text-gray-600 hover:bg-white/70'
+                                : 'bg-white/30 text-gray-600 hover:bg-white/50'
                             }`}
                             onClick={() => handleExpand('right')}
                             style={{ flex: showRightText ? 1 : 0.3 }}
@@ -525,7 +567,7 @@ export default function Auth() {
                                 value={inputAltLoginRight}
                                 onChange={(e) => setInputAltLoginRight(e.target.value)}
                                 placeholder={getSecondaryType() === 'email' ? 'Введите email' : 'Введите @username'}
-                                className="w-full px-4 py-3 border border-gray-300 rounded-[8px] focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
+                                className="w-full px-4 py-3 border border-gray-300 rounded-[8px] focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 bg-white/80"
                                 onKeyPress={(e) => {
                                   if (e.key === 'Enter') {
                                     handleConfirmAltLogin(inputAltLoginRight);
@@ -566,7 +608,7 @@ export default function Auth() {
                             value={login}
                             onChange={(e) => setLogin(e.target.value)}
                             placeholder="Email или @username"
-                            className="w-full px-4 py-3 border border-gray-300 rounded-[8px] focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
+                            className="w-full px-4 py-3 border border-gray-300 rounded-[8px] focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 bg-white/80"
                             onKeyPress={(e) => {
                               if (e.key === 'Enter') {
                                 handleSendCode();
@@ -608,7 +650,7 @@ export default function Auth() {
                           value={digit}
                           onChange={(e) => handleCodeChange(index, e.target.value)}
                           onKeyDown={(e) => handleCodeKeyDown(index, e)}
-                          className="w-12 h-12 text-center text-lg font-bold bg-white border border-gray-300 rounded-[8px] focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 ease-in-out hover:border-primary/50 focus:scale-105"
+                          className="w-12 h-12 text-center text-lg font-bold bg-white/80 border border-gray-300 rounded-[8px] focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 ease-in-out hover:border-primary/50 focus:scale-105"
                           placeholder=""
                           autoComplete="off"
                         />
@@ -652,8 +694,8 @@ export default function Auth() {
           </div>
 
           {/* Тыльная сторона - Telegram Login Widget */}
-          <div className="flip-card-back absolute w-full h-[500px] backface-hidden">
-            <div className="rounded-[20px] shadow-2xl p-6 sm:p-8 w-full h-full flex flex-col justify-between relative z-10">
+          <div className="flip-card-back absolute w-full h-[500px]">
+            <div className="rounded-[20px] shadow-2xl p-6 sm:p-8 w-full h-full flex flex-col justify-between relative z-10 backdrop-blur-sm">
               <div className="flex-1 flex flex-col items-center justify-center w-full">
                 {/* Кнопка закрытия */}
                 <button

@@ -1,7 +1,8 @@
 import React, { useMemo, useEffect, useState, useRef } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { Users, Package, Award, Calendar, Settings, LogIn } from 'lucide-react';
+import { Users, Package, Award, Calendar, Settings, LogIn, MessageSquare } from 'lucide-react';
 import ProfileMenu from './ProfileMenu';
+import NotificationButton from './NotificationButton';
 import { useRole } from './RoleProvider';
 import { useAuth } from '../contexts/AuthContext';
 import Logo from '../res/A_logo.svg?react';
@@ -12,6 +13,7 @@ const baseMenu = [
   { to: '/competencies', icon: <Award className="w-5 h-5" />, label: 'Компетенции' },
   { to: '/products', icon: <Package className="w-5 h-5" />, label: 'Продукты' },
   { to: '/vacations', icon: <Calendar className="w-5 h-5" />, label: 'Отпуска' },
+  { to: '/meeting-rooms', icon: <MessageSquare className="w-5 h-5" />, label: 'Переговорные' },
 ];
 
 const adminMenu = { to: '/admin', icon: <Settings className="w-5 h-5" />, label: 'Администрирование' };
@@ -167,7 +169,8 @@ export default function Header() {
         </div>
       )}
       <div className="flex-1 min-w-0" />
-      <div className="ml-2 lg:ml-6 flex-shrink-0">
+      <div className="ml-2 lg:ml-6 flex-shrink-0 flex items-center gap-4">
+        {isAuthenticated && <NotificationButton />}
         {isAuthenticated ? (
           <ProfileMenu />
         ) : isAuthenticated === null ? (
@@ -178,7 +181,7 @@ export default function Header() {
         ) : (
           <button
             onClick={() => navigate('/auth')}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-[25px] font-medium text-sm transition hover:bg-primary/90"
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-[25px] font-medium text-sm transition hover:bg-primary/90 h-10 min-h-[40px]"
           >
             <LogIn className="w-4 h-4" />
             <span className="hidden lg:inline">Войти</span>

@@ -44,145 +44,59 @@ const sendTelegramCodeReal = async (telegram, code) => {
 // @route   POST /api/auth/send-code
 // @access  Public
 const sendCode = async (req, res) => {
-  console.log('SEND-CODE CONTROLLER CALLED', req.body);
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      console.log('VALIDATION ERRORS:', errors.array());
-      return res.status(400).json({ 
-        success: false, 
-        errors: errors.array() 
-      });
-    }
-
     const { login } = req.body;
 
     if (!login) {
-      return res.status(400).json({
-        success: false,
-        message: 'Логин обязателен'
-      });
+      return res.status(400).json({ error: 'Необходимо указать логин' });
     }
 
-    // Determine login type
-    const isTelegram = login.startsWith('@') || login.includes('t.me/');
-    const isEmail = login.includes('@') && !isTelegram;
+    // Определяем тип логина
+    let isEmail = login.includes('@') && login.includes('.');
+    let isTelegram = login.startsWith('@');
 
     if (!isEmail && !isTelegram) {
-      return res.status(400).json({
-        success: false,
-        message: 'Введите корректный email или аккаунт Telegram'
-      });
+      return res.status(400).json({ error: 'Необходимо указать корректный email или telegram_id' });
     }
 
-    // Find employee by login in MySQL database
-    
     let employee;
     if (isEmail) {
-      employee = await Employee.findOne({
-        where: { email: login },
-        include: [
-          { model: Department, as: 'department' },
-          { model: Role, as: 'adminRoles' }
-        ]
-      });
-    } else {
-      employee = await Employee.findOne({
-        where: { telegram: login },
-        include: [
-          { model: Department, as: 'department' },
-          { model: Role, as: 'adminRoles' }
-        ]
-      });
+      employee = await Employee.findOne({ where: { email: login } });
+    } else if (isTelegram) {
+      employee = await Employee.findOne({ where: { telegram: login } });
     }
 
     if (!employee) {
-      return res.status(404).json({
-        success: false,
-        message: isTelegram 
-          ? 'Такой пользователь не найден, или у него в профиле не внесен логин Telegram'
-          : 'Такой пользователь не найден'
-      });
+      return res.status(404).json({ error: 'Сотрудник не найден' });
     }
-    
 
     if (employee.status !== 'active') {
-      return res.status(401).json({
-        success: false,
-        message: 'Аккаунт неактивен'
-      });
+      return res.status(403).json({ error: 'Аккаунт неактивен' });
     }
 
-    // Generate code
-    const code = generateCode();
-    const expiresAt = new Date(Date.now() + 1 * 60 * 1000); // 1 minute
-    
-    // Store code
+    // Генерируем код
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 минут
+
+    // Сохраняем код в памяти
     activeCodes.set(login, {
       code,
       employeeId: employee.id,
       expiresAt
     });
 
-    // Send code
-    let sent = false;
-    let telegramError = null;
+    // Отправляем код
     if (isEmail) {
-      sent = await sendEmailCodeReal(login, code);
+      await sendEmailCode(login, code);
     } else if (isTelegram) {
-      // Проверяем настройки чата для авторизации
-      const chatSettings = await NotificationChat.findOne({
-        where: { 
-          chatId: employee.telegram_chat_id,
-          isActive: true,
-          status: 'active'
-        }
-      });
-
-      // Если настройки чата найдены и авторизация отключена
-      if (chatSettings && !chatSettings.commands.auth) {
-        return res.status(403).json({
-          success: false,
-          message: 'Авторизация через Telegram отключена для этого чата'
-        });
-      }
-
-      const result = await sendTelegramCodeReal(login, code);
-      if (typeof result === 'object' && result.success === false) {
-        telegramError = result.error;
-        sent = false;
-      } else {
-        sent = result;
-      }
+      console.log('Отправка кода в Telegram:', login, 'Код:', code);
+      await sendTelegramCode(login, code);
     }
 
-    if (!sent) {
-      if (telegramError === 'BOT_NOT_ADDED') {
-        return res.status(400).json({
-          success: false,
-          message: 'Бот не связан с аккаунтом. Перейдите к @atmsrvs_bot, запустите его командой /start и выполните команду /link.',
-          error: 'BOT_NOT_ADDED'
-        });
-      }
-      
-      return res.status(500).json({
-        success: false,
-        message: 'Ошибка отправки кода'
-      });
-    }
-
-    res.json({
-      success: true,
-      message: isTelegram 
-        ? 'Код отправлен в Telegram. Если вы не получили сообщение, проверьте, что добавили бота @atmsrvs_bot'
-        : 'Код отправлен на вашу почту',
-      expiresIn: 1 * 60 // 1 minute in seconds
-    });
+    res.json({ message: 'Код отправлен' });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Ошибка сервера'
-    });
+    console.error('Ошибка при отправке кода:', error);
+    res.status(500).json({ error: 'Внутренняя ошибка сервера' });
   }
 };
 
@@ -191,8 +105,11 @@ const sendCode = async (req, res) => {
 // @access  Public
 const verifyCode = async (req, res) => {
   try {
+    console.log('verifyCode вызвана с данными:', req.body);
+    
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.log('Ошибки валидации:', errors.array());
       return res.status(400).json({ 
         success: false, 
         errors: errors.array() 
@@ -200,8 +117,10 @@ const verifyCode = async (req, res) => {
     }
 
     const { login, code } = req.body;
+    console.log('Получены данные - login:', login, 'code:', code);
 
     if (!login || !code) {
+      console.log('Отсутствуют обязательные поля');
       return res.status(400).json({
         success: false,
         message: 'Логин и код обязательны'
@@ -210,8 +129,10 @@ const verifyCode = async (req, res) => {
 
     // Get stored code data
     const codeData = activeCodes.get(login);
+    console.log('Найденные данные кода:', codeData);
     
     if (!codeData) {
+      console.log('Код не найден для login:', login);
       return res.status(400).json({
         success: false,
         message: 'Код не найден или истек'
@@ -219,7 +140,9 @@ const verifyCode = async (req, res) => {
     }
 
     // Check if code expired
+    console.log('Проверка истечения кода. Текущее время:', new Date(), 'Время истечения:', codeData.expiresAt);
     if (new Date() > codeData.expiresAt) {
+      console.log('Код истек');
       activeCodes.delete(login);
       return res.status(400).json({
         success: false,
@@ -228,7 +151,9 @@ const verifyCode = async (req, res) => {
     }
 
     // Verify code
+    console.log('Сравнение кодов. Ожидаемый:', codeData.code, 'Полученный:', code);
     if (codeData.code !== code) {
+      console.log('Код не совпадает');
       return res.status(400).json({
         success: false,
         message: 'Код введен неверно'

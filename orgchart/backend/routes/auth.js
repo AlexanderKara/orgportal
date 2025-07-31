@@ -49,11 +49,11 @@ router.post('/send-code', [
 
 router.post('/verify-code', [
   body('login').notEmpty().withMessage('Login is required'),
-  body('code').isLength({ min: 4, max: 4 }).withMessage('Code must be 4 digits')
+  body('code').isLength({ min: 6, max: 6 }).withMessage('Code must be 6 digits')
 ], verifyCode);
 
 router.post('/confirm-code', [
-  body('code').isLength({ min: 4, max: 4 }).withMessage('Code must be 4 digits')
+  body('code').isLength({ min: 6, max: 6 }).withMessage('Code must be 6 digits')
 ], confirmCode);
 
 // Telegram Login Widget callback
@@ -115,7 +115,7 @@ router.get('/telegram-callback', async (req, res) => {
     const employee = await Employee.findOne({
       where: { 
         telegram_id: id,
-        isActive: true
+        status: 'active'
       },
       include: [
         { model: Department, as: 'department' },

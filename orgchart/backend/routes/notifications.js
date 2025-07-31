@@ -14,6 +14,15 @@ router.get('/', notificationController.getNotifications);
 // Получить активные уведомления
 router.get('/active', notificationController.getActiveNotifications);
 
+// Получить пользовательские уведомления
+router.get('/user', notificationController.getUserNotifications);
+
+// Отметить уведомление как прочитанное
+router.put('/:id/read', notificationController.markNotificationAsRead);
+
+// Отметить все уведомления как прочитанные
+router.put('/mark-all-read', notificationController.markAllNotificationsAsRead);
+
 // Получить уведомление по ID
 router.get('/:id', notificationController.getNotification);
 

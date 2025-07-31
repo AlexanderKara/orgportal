@@ -124,54 +124,29 @@ export default function SkillsEditor({
     setSelectedSkillForLevel(null);
   };
 
-  const renderSkillLevel = (skill) => {
-    console.log('SkillsEditor - renderSkillLevel called for skill:', skill);
-    console.log('SkillsEditor - skill.level:', skill.level, 'type:', typeof skill.level);
-    console.log('SkillsEditor - type:', type, 'skill.label:', skill.label);
-    
-    if (!skill.level || skill.level === 'none' || skill.level === null) {
-      console.log('SkillsEditor - No level found, returning null');
-      return null;
-    }
-    
-    let levelNum = 0;
-    if (typeof skill.level === 'number') {
-      levelNum = skill.level;
-    } else if (typeof skill.level === 'string') {
-      // поддержка строковых значений ('1', '2', '3')
-      if (!isNaN(Number(skill.level))) {
-        levelNum = Number(skill.level);
-      } else {
-        // Маппинг строковых уровней на числа
-        const map = { beginner: 1, intermediate: 2, advanced: 3, expert: 3 };
-        levelNum = map[skill.level] || 0;
-      }
-    }
-    
-    console.log('SkillsEditor - Calculated levelNum:', levelNum);
-    
-    if (levelNum < 1 || levelNum > 3) {
-      console.log('SkillsEditor - Level out of range, returning null');
-      return null;
-    }
-    
-    console.log('SkillsEditor - Rendering level stars for level:', levelNum);
+  // StarBullet component for competencies
+  function StarBullet() {
     return (
-      <div className="flex gap-0.5">
-        {Array.from({ length: levelNum }).map((_, i) => (
-          <svg
-            key={i}
-            className="w-3 h-3"
-            viewBox="0 0 14 14"
-            style={{ display: 'inline' }}
-          >
-            <polygon
-              points="7,1 8.2,5.2 13,7 8.2,8.8 7,13 5.8,8.8 1,7 5.8,5.2"
-              fill="#E42E0F"
-              stroke="#E42E0F"
-              strokeWidth="0.5"
-            />
-          </svg>
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" className="mr-[6px] min-w-[14px] rounded-[1px]">
+        <polygon points="7,1 8.2,5.2 13,7 8.2,8.8 7,13 5.8,8.8 1,7 5.8,5.2" fill="#E42E0F" />
+      </svg>
+    );
+  }
+
+  const renderSkillLevel = (skill, type) => {
+    if (!skill.level) {
+      return null;
+    }
+    
+    const levelNum = parseInt(skill.level);
+    if (isNaN(levelNum) || levelNum < 1 || levelNum > 3) {
+      return null;
+    }
+    
+    return (
+      <div className="flex gap-1">
+        {Array.from({ length: levelNum }, (_, index) => (
+          <StarBullet key={index} />
         ))}
       </div>
     );
@@ -186,7 +161,7 @@ export default function SkillsEditor({
             <div key={skill.id} className="flex items-center gap-2">
               {config.icon}
               <span className="text-sm text-gray-900">{skill.label}</span>
-              {renderSkillLevel(skill)}
+              {renderSkillLevel(skill, type)}
             </div>
           ))
         ) : (
@@ -216,7 +191,7 @@ export default function SkillsEditor({
               onClick={() => handleSkillClick(skill)}
             >
               {skill.label}
-              {renderSkillLevel(skill)}
+              {renderSkillLevel(skill, type)}
               <button
                 type="button"
                 onClick={(e) => {

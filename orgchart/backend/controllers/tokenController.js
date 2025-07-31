@@ -64,31 +64,12 @@ const getEmployeeTokens = async (req, res) => {
         {
           model: models.TokenType,
           as: 'tokenType',
-          attributes: ['id', 'name', 'value', 'backgroundColor', 'textColor']
+          attributes: ['id', 'name', 'value', 'color', 'description']
         }
       ],
       attributes: ['id', 'publicId', 'employeeId', 'tokenTypeId', 'senderId', 'image', 'description', 'status', 'createdAt', 'updatedAt'],
       order: [['createdAt', 'DESC']]
     });
-
-    // ВРЕМЕННАЯ ДИАГНОСТИКА
-    console.log(`=== ДИАГНОСТИКА ТОКЕНОВ ДЛЯ СОТРУДНИКА ${employeeId} ===`);
-    console.log(`Найдено токенов: ${tokens.length}`);
-    
-    if (tokens.length > 0) {
-      console.log('Первый токен:', {
-        id: tokens[0].id,
-        tokenTypeId: tokens[0].tokenTypeId,
-        hasTokenType: !!tokens[0].tokenType,
-        tokenTypeName: tokens[0].tokenType?.name || 'NULL',
-        tokenTypeValue: tokens[0].tokenType?.value || 'NULL'
-      });
-      
-      console.log('Все токены с типами:');
-      tokens.forEach((token, index) => {
-        console.log(`${index + 1}. ID: ${token.id}, TypeID: ${token.tokenTypeId}, TypeName: ${token.tokenType?.name || 'NULL'}`);
-      });
-    }
 
     // Группируем токены по типу для совместимости с frontend
     const available = [];
@@ -121,14 +102,7 @@ const getEmployeeTokens = async (req, res) => {
       received,
       // Для обратной совместимости
       tokens: available,
-      individualTokens: available,
-      // ВРЕМЕННАЯ ДИАГНОСТИКА
-      _debug: {
-        totalTokens: tokens.length,
-        availableCount: available.length,
-        receivedCount: received.length,
-        firstTokenType: available[0]?.tokenType?.name || 'NULL'
-      }
+      individualTokens: available
     });
   } catch (error) {
     console.error('Error getting employee tokens:', error);
@@ -268,7 +242,7 @@ const getTopRating = async (req, res) => {
     // Получаем все полученные токены за указанный год
     const receivedTokens = await models.TokenTransaction.findAll({
       where: {
-        recipientId: { [Op.ne]: null },
+        toEmployeeId: { [Op.ne]: null },
         createdAt: {
           [Op.gte]: new Date(year, 0, 1),
           [Op.lt]: new Date(year + 1, 0, 1)
@@ -299,7 +273,7 @@ const getTopRating = async (req, res) => {
     const employeesWithRating = allEmployees.map(employee => {
       // Подсчитываем полученные токены сотрудника
       const employeeTokens = receivedTokens.filter(token => 
-        token.recipientId === employee.id
+        token.toEmployeeId === employee.id
       );
       
       const totalPoints = employeeTokens.reduce((sum, token) => {
@@ -635,14 +609,6 @@ const distributeTokens = async (req, res) => {
   try {
     const { tokenTypeId, employeeIds, count = 1, description, comment } = req.body;
 
-    console.log('Массовое распределение токенов:', {
-      tokenTypeId,
-      employeeIds,
-      count,
-      description,
-      comment
-    });
-
     if (!tokenTypeId || !employeeIds || !Array.isArray(employeeIds) || employeeIds.length === 0) {
       return res.status(400).json({ message: 'Неверные параметры запроса' });
     }
@@ -690,15 +656,6 @@ const distributeTokens = async (req, res) => {
           // Используем описание из запроса или дефолтное из шаблона
           const tokenDescription = description || tokenType.description || '';
           
-          console.log('Создание токена с параметрами:', {
-            employeeId,
-            tokenTypeId,
-            tokenDescription,
-            comment,
-            originalDescription: description,
-            tokenTypeDescription: tokenType.description
-          });
-          
           const token = await models.Token.create({
             publicId: require('crypto').randomUUID(),
             employeeId,
@@ -717,14 +674,6 @@ const distributeTokens = async (req, res) => {
         // Создаем запись о транзакции для отображения в списке отправленных
         if (tokens.length > 0) {
           try {
-            console.log('Создание TokenTransaction с параметрами:', {
-              fromEmployeeId: null,
-              toEmployeeId: employeeId,
-              tokenTypeId: tokenTypeId,
-              count: tokens.length,
-              message: comment || description || ''
-            });
-            
             await models.TokenTransaction.create({
               fromEmployeeId: null, // Админское начисление
               toEmployeeId: employeeId,
@@ -732,8 +681,6 @@ const distributeTokens = async (req, res) => {
               count: tokens.length,
               message: comment || description || ''
             });
-            
-            console.log('TokenTransaction создан успешно');
           } catch (transactionError) {
             console.error('Ошибка создания TokenTransaction:', transactionError);
             // Не прерываем выполнение, так как основные токены уже созданы
@@ -830,30 +777,19 @@ const getTokenDistributionServiceStatus = async (req, res) => {
 // Функция для декодирования хеша токена
 const decodeTokenHash = (tokenHash) => {
   try {
-    console.log('Attempting to decode token hash:', tokenHash);
+    // Декодируем base64
+    const decoded = Buffer.from(tokenHash, 'base64').toString('utf-8');
     
-    // Добавляем недостающие символы для корректного base64 декодирования
-    const paddedHash = tokenHash + '==';
-    console.log('Padded hash:', paddedHash);
-    
-    const decoded = Buffer.from(paddedHash, 'base64').toString('utf8');
-    console.log('Decoded string:', decoded);
-    
-    const parts = decoded.split('-');
-    console.log('Split parts:', parts);
-    
-    if (parts.length < 2) {
-      console.error('Invalid token hash format - expected at least 2 parts');
+    // Разбираем строку на части
+    const parts = decoded.split('|');
+    if (parts.length !== 2) {
       return null;
     }
     
     const tokenId = parseInt(parts[0]);
-    const timestamp = parts[1];
-    
-    console.log('Parsed tokenId:', tokenId, 'timestamp:', timestamp);
+    const timestamp = parseInt(parts[1]);
     
     if (isNaN(tokenId)) {
-      console.error('Invalid token ID in hash');
       return null;
     }
     
@@ -862,7 +798,6 @@ const decodeTokenHash = (tokenHash) => {
       timestamp: timestamp
     };
   } catch (error) {
-    console.error('Error decoding token hash:', error);
     return null;
   }
 };
@@ -871,16 +806,12 @@ const decodeTokenHash = (tokenHash) => {
 const getTokenByHash = async (req, res) => {
   try {
     const { tokenHash } = req.params;
-    console.log('Received request for token hash:', tokenHash);
 
     // Декодируем хеш
     const decoded = decodeTokenHash(tokenHash);
     if (!decoded) {
-      console.log('Failed to decode token hash');
       return res.status(404).json({ message: 'Неверная ссылка на токен' });
     }
-
-    console.log('Decoded token data:', decoded);
 
     const token = await models.Token.findByPk(decoded.tokenId, {
       include: [
@@ -896,20 +827,14 @@ const getTokenByHash = async (req, res) => {
       ]
     });
 
-    console.log('Found token:', token ? 'yes' : 'no');
-
     if (!token) {
-      console.log('Token not found for ID:', decoded.tokenId);
       return res.status(404).json({ message: 'Токен не найден' });
     }
 
     // Проверяем, что токен активен и не был принят
     if (token.status !== 'active') {
-      console.log('Token status is not active:', token.status);
       return res.status(400).json({ message: 'Токен уже был принят или деактивирован' });
     }
-
-    console.log('Returning token data successfully');
 
     res.json({
       id: token.id,
@@ -933,8 +858,6 @@ const receiveTokenByHash = async (req, res) => {
   try {
     const { tokenHash } = req.params;
     const { receiverId } = req.body;
-
-    console.log(`Попытка приема токена по хешу ${tokenHash} сотрудником ${receiverId}`);
 
     // Декодируем хеш
     const decoded = decodeTokenHash(tokenHash);
@@ -998,8 +921,6 @@ const receiveTokenByHash = async (req, res) => {
     // Проверяем достижения
     await checkAndAwardAchievements(receiverId, currentYear);
 
-    console.log(`Токен ${decoded.tokenId} успешно передан сотруднику ${receiver.full_name}`);
-
     res.json({
       success: true,
       message: 'Токен успешно принят',
@@ -1032,6 +953,42 @@ const receiveTokenByHash = async (req, res) => {
   }
 })();
 
+// Запустить сервис распределения токенов
+const startTokenDistributionService = async (req, res) => {
+  try {
+    const tokenDistributionService = require('../services/tokenDistributionService');
+    await tokenDistributionService.startScheduler();
+    res.json({ 
+      success: true, 
+      message: 'Token distribution service started successfully' 
+    });
+  } catch (error) {
+    console.error('Error starting token distribution service:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to start token distribution service' 
+    });
+  }
+};
+
+// Остановить сервис распределения токенов
+const stopTokenDistributionService = async (req, res) => {
+  try {
+    const tokenDistributionService = require('../services/tokenDistributionService');
+    await tokenDistributionService.stopScheduler();
+    res.json({ 
+      success: true, 
+      message: 'Token distribution service stopped successfully' 
+    });
+  } catch (error) {
+    console.error('Error stopping token distribution service:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to stop token distribution service' 
+    });
+  }
+};
+
 module.exports = {
   getTokenTypes,
   getEmployeeTokens,
@@ -1045,5 +1002,7 @@ module.exports = {
   checkAutoDistribution,
   getTokenByHash,
   receiveTokenByHash,
-  getTokenDistributionServiceStatus
+  getTokenDistributionServiceStatus,
+  startTokenDistributionService,
+  stopTokenDistributionService
 }; 

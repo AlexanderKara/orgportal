@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Users, Clock, LogIn } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import PageHeader from './ui/PageHeader';
 import ViewSwitcher from './ui/ViewSwitcher';
 
@@ -217,6 +217,17 @@ const TimelineView = () => {
 export default function PublicLanding() {
   const [activeView, setActiveView] = useState('about');
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Определяем активное представление на основе URL
+  useEffect(() => {
+    const path = location.pathname;
+    if (path.includes('/timeline')) {
+      setActiveView('timeline');
+    } else {
+      setActiveView('about');
+    }
+  }, [location.pathname]);
 
   const views = [
     {
@@ -230,6 +241,16 @@ export default function PublicLanding() {
       icon: <Clock className="w-4 h-4" />
     }
   ];
+
+  const handleViewChange = (viewId) => {
+    setActiveView(viewId);
+    // Обновляем URL при смене представления
+    if (viewId === 'timeline') {
+      navigate('/timeline');
+    } else {
+      navigate('/');
+    }
+  };
 
   const renderView = () => {
     switch (activeView) {
@@ -261,7 +282,7 @@ export default function PublicLanding() {
         <ViewSwitcher
           views={views}
           activeView={activeView}
-          onViewChange={setActiveView}
+          onViewChange={handleViewChange}
         />
       </PageHeader>
       

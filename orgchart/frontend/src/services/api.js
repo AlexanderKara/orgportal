@@ -1,4 +1,8 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || '';
+// Используем относительные пути для работы с прокси Vite
+const API_BASE_URL = '';
+
+console.log('API_BASE_URL from env:', import.meta.env.VITE_API_URL);
+console.log('API_BASE_URL final:', API_BASE_URL);
 
 // Кэш для API запросов
 const cache = new Map();
@@ -12,6 +16,7 @@ const throttleDelay = 1000; // 1 секунда между запросами
 class ApiService {
   constructor() {
     this.baseURL = API_BASE_URL;
+    console.log('ApiService constructor - baseURL:', this.baseURL);
   }
 
   // Проверка кэша
@@ -143,6 +148,11 @@ class ApiService {
     const timestamp = Date.now();
     const separator = endpoint.includes('?') ? '&' : '?';
     const url = `${this.baseURL}${endpoint}${separator}_t=${timestamp}`;
+    
+    console.log('API Request URL:', url);
+    console.log('API baseURL:', this.baseURL);
+    console.log('API endpoint:', endpoint);
+    
     const config = {
       headers: {
         'Content-Type': 'application/json',
@@ -903,6 +913,23 @@ class ApiService {
     });
   }
 
+  // User Notifications
+  async getUserNotifications() {
+    return this.request('/api/notifications/user');
+  }
+
+  async markNotificationAsRead(id) {
+    return this.request(`/api/notifications/${id}/read`, {
+      method: 'PUT',
+    });
+  }
+
+  async markAllNotificationsAsRead() {
+    return this.request('/api/notifications/mark-all-read', {
+      method: 'PUT',
+    });
+  }
+
   // Templates
   async getTemplates() {
     return this.request('/api/templates');
@@ -993,6 +1020,18 @@ class ApiService {
   // Token Distribution Service
   async getTokenDistributionServiceStatus() {
     return this.request('/api/tokens/distribution-service/status');
+  }
+
+  async startTokenDistributionService() {
+    return this.request('/api/tokens/distribution-service/start', {
+      method: 'POST',
+    });
+  }
+
+  async stopTokenDistributionService() {
+    return this.request('/api/tokens/distribution-service/stop', {
+      method: 'POST',
+    });
   }
 
   async checkAutoDistribution() {
@@ -1227,6 +1266,146 @@ class ApiService {
 
   async checkAndAssignAchievements() {
     return this.throttledRequest('/api/achievements/check-and-assign');
+  }
+
+  // Meeting Rooms API
+  async getMeetingRooms() {
+    console.log('API: Запрос переговорных комнат');
+    const result = await this.request('/api/meeting-rooms/rooms');
+    console.log('API: Ответ переговорных комнат:', result);
+    return result;
+  }
+
+  async getMeetingRoomsAdmin() {
+    console.log('API: Запрос переговорных комнат (админ)');
+    const result = await this.request('/api/meeting-rooms/rooms/admin');
+    console.log('API: Ответ переговорных комнат (админ):', result);
+    return result;
+  }
+
+  async getMeetingRoom(id) {
+    console.log('API: Запрос переговорной комнаты:', id);
+    const result = await this.request(`/api/meeting-rooms/rooms/${id}`);
+    console.log('API: Ответ переговорной комнаты:', result);
+    return result;
+  }
+
+  async createMeetingRoom(roomData) {
+    console.log('API: Создание переговорной комнаты:', roomData);
+    const result = await this.post('/api/meeting-rooms/rooms', roomData);
+    console.log('API: Результат создания комнаты:', result);
+    return result;
+  }
+
+  async updateMeetingRoom(id, roomData) {
+    console.log('API: Обновление переговорной комнаты:', id, roomData);
+    const result = await this.put(`/api/meeting-rooms/rooms/${id}`, roomData);
+    console.log('API: Результат обновления комнаты:', result);
+    return result;
+  }
+
+  async deleteMeetingRoom(id) {
+    console.log('API: Удаление переговорной комнаты:', id);
+    const result = await this.delete(`/api/meeting-rooms/rooms/${id}`);
+    console.log('API: Результат удаления комнаты:', result);
+    return result;
+  }
+
+  async getRoomSchedule(roomId, date) {
+    const result = await this.request(`/api/meeting-rooms/rooms/${roomId}/schedule?date=${date}`);
+    return result;
+  }
+
+  async getAvailableSlots(roomId, date) {
+    const result = await this.request(`/api/meeting-rooms/rooms/${roomId}/slots?date=${date}`);
+    return result;
+  }
+
+  // Meeting Room Bookings API
+  async createBooking(bookingData) {
+    console.log('API: Создание бронирования:', bookingData);
+    const result = await this.post('/api/meeting-rooms/bookings', bookingData);
+    console.log('API: Результат создания бронирования:', result);
+    return result;
+  }
+
+  async getUserBookings() {
+    console.log('API: Запрос бронирований пользователя');
+    const result = await this.request('/api/meeting-rooms/bookings');
+    console.log('API: Ответ бронирований пользователя:', result);
+    return result;
+  }
+
+  async getBooking(id) {
+    console.log('API: Запрос бронирования:', id);
+    const result = await this.request(`/api/meeting-rooms/bookings/${id}`);
+    console.log('API: Ответ бронирования:', result);
+    return result;
+  }
+
+  async updateBooking(id, bookingData) {
+    console.log('API: Обновление бронирования:', id, bookingData);
+    const result = await this.put(`/api/meeting-rooms/bookings/${id}`, bookingData);
+    console.log('API: Результат обновления бронирования:', result);
+    return result;
+  }
+
+  async cancelBooking(id) {
+    console.log('API: Отмена бронирования:', id);
+    const result = await this.delete(`/api/meeting-rooms/bookings/${id}`);
+    console.log('API: Результат отмены бронирования:', result);
+    return result;
+  }
+
+  async requestBookingChange(bookingId, requestData) {
+    console.log('API: Запрос изменения бронирования:', bookingId, requestData);
+    const result = await this.post(`/api/meeting-rooms/bookings/${bookingId}/request-change`, requestData);
+    console.log('API: Результат запроса изменения:', result);
+    return result;
+  }
+
+  async getBookingRequests() {
+    console.log('API: Запрос запросов на изменение');
+    const result = await this.request('/api/meeting-rooms/booking-requests');
+    console.log('API: Ответ запросов на изменение:', result);
+    return result;
+  }
+
+  // App Settings
+  async getAppSettings() {
+    return this.request('/api/app-settings');
+  }
+
+  async updateAppSetting(key, value, type = 'string') {
+    return this.request(`/api/app-settings/${key}`, {
+      method: 'PUT',
+      body: JSON.stringify({ value, type })
+    });
+  }
+
+  async getAppSetting(key) {
+    return this.request(`/api/app-settings/${key}`);
+  }
+
+  // Meeting Room Service API
+  async getMeetingRoomServiceStatus() {
+    const result = await this.request('/api/meeting-room-service/status');
+    return result;
+  }
+
+  async startMeetingRoomService() {
+    const result = await this.post('/api/meeting-room-service/start');
+    return result;
+  }
+
+  async stopMeetingRoomService() {
+    const result = await this.post('/api/meeting-room-service/stop');
+    return result;
+  }
+
+  async processMeetingRoomTasksNow() {
+    const result = await this.post('/api/meeting-room-service/process-now');
+    return result;
   }
 }
 

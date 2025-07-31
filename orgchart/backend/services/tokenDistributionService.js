@@ -2,7 +2,7 @@ const { Op } = require('sequelize');
 const moment = require('moment-timezone');
 
 // Импортируем модели
-let TokenType, TokenDistribution, Employee, EmployeeToken, DistributionSettings;
+let TokenType, TokenDistribution, Employee, EmployeeToken, DistributionSettings, AppSettings;
 
 try {
   const models = require('../models');
@@ -11,6 +11,7 @@ try {
   Employee = models.Employee;
   EmployeeToken = models.EmployeeToken;
   DistributionSettings = models.DistributionSettings;
+  AppSettings = models.AppSettings;
 } catch (error) {
   console.error('Ошибка импорта моделей:', error);
 }
@@ -19,6 +20,42 @@ class TokenDistributionService {
   constructor() {
     this.isRunning = false;
     this.runningDistributions = new Set();
+  }
+
+  // Загрузить статус сервиса из базы данных
+  async loadServiceStatus() {
+    try {
+      const setting = await AppSettings.findOne({ where: { key: 'token_distribution_service_enabled' } });
+      if (setting) {
+        this.isRunning = setting.value === 'true' || setting.value === '1';
+      } else {
+        // Создаем настройку по умолчанию
+        await AppSettings.create({
+          key: 'token_distribution_service_enabled',
+          value: 'false',
+          type: 'boolean',
+          description: 'Статус сервиса распределения токенов'
+        });
+        this.isRunning = false;
+      }
+    } catch (error) {
+      console.error('Ошибка при загрузке статуса сервиса распределения токенов:', error);
+      this.isRunning = false;
+    }
+  }
+
+  // Сохранить статус сервиса в базу данных
+  async saveServiceStatus(status) {
+    try {
+      await AppSettings.upsert({
+        key: 'token_distribution_service_enabled',
+        value: status ? 'true' : 'false',
+        type: 'boolean',
+        description: 'Статус сервиса распределения токенов'
+      });
+    } catch (error) {
+      console.error('Ошибка при сохранении статуса сервиса распределения токенов:', error);
+    }
   }
 
   // Получает настройки сервиса
@@ -391,8 +428,13 @@ class TokenDistributionService {
   }
 
   // Запуск планировщика
-  startScheduler() {
-    const settings = this.getSettings();
+  async startScheduler() {
+    if (this.isRunning) {
+      return;
+    }
+
+    this.isRunning = true;
+    await this.saveServiceStatus(true);
     
     const scheduleCheck = async () => {
       try {
@@ -421,7 +463,32 @@ class TokenDistributionService {
     scheduleCheck();
     
     // Проверяем каждые 30 минут
-    setInterval(scheduleCheck, 30 * 60 * 1000);
+    this.schedulerInterval = setInterval(scheduleCheck, 30 * 60 * 1000);
+  }
+
+  // Остановка планировщика
+  async stopScheduler() {
+    if (!this.isRunning) {
+      return;
+    }
+
+    this.isRunning = false;
+    if (this.schedulerInterval) {
+      clearInterval(this.schedulerInterval);
+      this.schedulerInterval = null;
+    }
+    await this.saveServiceStatus(false);
+  }
+
+  // Инициализация сервиса при запуске
+  async initializeService() {
+    await this.loadServiceStatus();
+    if (this.isRunning) {
+      await this.startScheduler();
+      console.log('Сервис распределения токенов инициализирован и запущен');
+    } else {
+      console.log('Сервис распределения токенов инициализирован, но не запущен');
+    }
   }
 
   // Получение статистики
@@ -513,7 +580,7 @@ class TokenDistributionService {
 
       return true;
     } catch (error) {
-      console.error('Error adding active token type:', error);
+      console.error('Ошибка при добавлении активного типа токена:', error);
       throw error;
     }
   }
@@ -542,7 +609,7 @@ class TokenDistributionService {
 
       return true;
     } catch (error) {
-      console.error('Error removing active token type:', error);
+      console.error('Ошибка при удалении активного типа токена:', error);
       throw error;
     }
   }

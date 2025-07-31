@@ -1,11 +1,5 @@
 require('dotenv').config();
 
-// Логирование для отладки
-console.log('Database config - DB_HOST:', process.env.DB_HOST);
-console.log('Database config - DB_USER:', process.env.DB_USER);
-console.log('Database config - DB_NAME:', process.env.DB_NAME);
-console.log('Database config - DB_PORT:', process.env.DB_PORT);
-
 module.exports = {
   development: {
     username: process.env.DB_USER || 'orgchart',

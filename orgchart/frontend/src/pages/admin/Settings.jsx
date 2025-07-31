@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { 
   Settings, 
   Bell, 
@@ -26,8 +26,10 @@ import {
 import { showNotification } from '../../utils/notifications';
 import api from '../../services/api';
 import Checkbox from '../../components/ui/Checkbox';
+import { SettingsContext } from '../../contexts/SettingsContext';
 
 export default function AppSettings() {
+  const settingsContext = useContext(SettingsContext);
   const [settings, setSettings] = useState({
     // Отображение
     showAnalytics: true,
@@ -41,6 +43,7 @@ export default function AppSettings() {
     darkMode: false,
     compactMode: false,
     highContrast: false,
+    avatarOverlay: 'helmet',
     
     // Уведомления
     notifications: true,
@@ -68,24 +71,47 @@ export default function AppSettings() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [serviceStatus, setServiceStatus] = useState({
+    notification: false,
+    tokenDistribution: false
+  });
 
   useEffect(() => {
     loadSettings();
+    loadServiceStatus();
   }, []);
+
+  const loadServiceStatus = async () => {
+    try {
+      const [notificationStatus, tokenStatus, meetingRoomStatus] = await Promise.all([
+        api.getNotificationServiceStatus(),
+        api.getTokenDistributionServiceStatus(),
+        api.getMeetingRoomServiceStatus()
+      ]);
+      
+      setServiceStatus({
+        notification: notificationStatus.data?.serviceStatus === 'running',
+        tokenDistribution: tokenStatus.data?.serviceStatus === 'running',
+        meetingRoom: meetingRoomStatus.data?.serviceStatus === 'running'
+      });
+    } catch (error) {
+      console.error('Error loading service status:', error);
+    }
+  };
 
   const loadSettings = async () => {
     try {
       setLoading(true);
-      // Здесь можно загрузить настройки с сервера
-      const savedSettings = localStorage.getItem('appSettings');
-      if (savedSettings) {
-        const parsed = JSON.parse(savedSettings);
-        setSettings(prev => ({ ...prev, ...parsed }));
-      }
+      // Загружаем настройки из контекста асинхронно
+      const contextSettings = settingsContext.settings;
+      
+      // Используем setTimeout для предотвращения блокировки рендеринга
+      setTimeout(() => {
+        setSettings(prev => ({ ...prev, ...contextSettings }));
+        setLoading(false);
+      }, 0);
     } catch (error) {
       console.error('Error loading settings:', error);
-      showNotification('Ошибка загрузки настроек', 'error');
-    } finally {
       setLoading(false);
     }
   };
@@ -97,20 +123,57 @@ export default function AppSettings() {
   const handleSave = async () => {
     try {
       setSaving(true);
-      
-      // Сохраняем в localStorage
-      localStorage.setItem('appSettings', JSON.stringify(settings));
-      
-      // Здесь можно отправить настройки на сервер
-      // await api.request('/api/settings', {
-      //   method: 'PUT',
-      //   body: JSON.stringify(settings)
-      // });
-      
+      // Сохраняем настройки через контекст
+      await settingsContext.updateSettings(settings);
       showNotification('Настройки сохранены', 'success');
     } catch (error) {
       console.error('Error saving settings:', error);
       showNotification('Ошибка сохранения настроек', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleServiceToggle = async (serviceType) => {
+    try {
+      setSaving(true);
+      
+      // Выполняем операции параллельно для улучшения производительности
+      let servicePromise;
+      let settingPromise;
+      
+      if (serviceType === 'notification') {
+        servicePromise = serviceStatus.notification 
+          ? api.stopNotificationService() 
+          : api.startNotificationService();
+        settingPromise = settingsContext.updateSetting('notification_service_enabled', !serviceStatus.notification);
+      } else if (serviceType === 'tokenDistribution') {
+        servicePromise = serviceStatus.tokenDistribution 
+          ? api.stopTokenDistributionService() 
+          : api.startTokenDistributionService();
+        settingPromise = settingsContext.updateSetting('token_distribution_service_enabled', !serviceStatus.tokenDistribution);
+      } else if (serviceType === 'meetingRoom') {
+        servicePromise = serviceStatus.meetingRoom 
+          ? api.stopMeetingRoomService() 
+          : api.startMeetingRoomService();
+        settingPromise = settingsContext.updateSetting('meeting_room_service_enabled', !serviceStatus.meetingRoom);
+      }
+      
+      // Выполняем операции параллельно
+      await Promise.all([servicePromise, settingPromise]);
+      
+      // Обновляем статус сервисов в фоне
+      setTimeout(() => {
+        loadServiceStatus();
+      }, 0);
+      
+      showNotification(
+        `Сервис ${serviceType === 'notification' ? 'уведомлений' : serviceType === 'tokenDistribution' ? 'распределения токенов' : 'переговорок'} ${serviceStatus[serviceType] ? 'остановлен' : 'запущен'}`,
+        'success'
+      );
+    } catch (error) {
+      console.error('Error toggling service:', error);
+      showNotification('Ошибка управления сервисом', 'error');
     } finally {
       setSaving(false);
     }
@@ -128,6 +191,7 @@ export default function AppSettings() {
         darkMode: false,
         compactMode: false,
         highContrast: false,
+        avatarOverlay: 'helmet',
         notifications: true,
         emailNotifications: true,
         telegramNotifications: true,
@@ -169,7 +233,16 @@ export default function AppSettings() {
       settings: [
         { key: 'darkMode', label: 'Темная тема', type: 'checkbox' },
         { key: 'compactMode', label: 'Компактный режим', type: 'checkbox' },
-        { key: 'highContrast', label: 'Высокий контраст', type: 'checkbox' }
+        { key: 'highContrast', label: 'Высокий контраст', type: 'checkbox' },
+        { 
+          key: 'avatarOverlay', 
+          label: 'Оверлей аватара для лидов', 
+          type: 'select', 
+          options: [
+            { value: 'helmet', label: 'Шлем' },
+            { value: 'roundstar', label: 'Орбита' }
+          ]
+        }
       ]
     },
     {
@@ -235,6 +308,30 @@ export default function AppSettings() {
           ]
         }
       ]
+    },
+    {
+      title: 'Сервисы',
+      icon: <Database className="w-5 h-5" />,
+      settings: [
+        { 
+          key: 'notification_service_enabled', 
+          label: 'Сервис уведомлений', 
+          type: 'service-toggle',
+          serviceType: 'notification'
+        },
+        { 
+          key: 'token_distribution_service_enabled', 
+          label: 'Сервис распределения токенов', 
+          type: 'service-toggle',
+          serviceType: 'tokenDistribution'
+        },
+        { 
+          key: 'meeting_room_service_enabled', 
+          label: 'Сервис переговорок', 
+          type: 'service-toggle',
+          serviceType: 'meetingRoom'
+        }
+      ]
     }
   ];
 
@@ -292,6 +389,35 @@ export default function AppSettings() {
                 </option>
               ))}
             </select>
+          </div>
+        );
+      
+      case 'service-toggle':
+        const isRunning = serviceStatus[setting.serviceType];
+        return (
+          <div key={setting.key} className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray/20 hover:bg-gray/5 transition-colors">
+            <div className="flex-1">
+              <label className="text-sm font-medium text-gray-900">
+                {setting.label}
+              </label>
+              <div className="flex items-center gap-2 mt-1">
+                <div className={`w-2 h-2 rounded-full ${isRunning ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                <span className="text-xs text-gray-500">
+                  {isRunning ? 'Работает' : 'Остановлен'}
+                </span>
+              </div>
+            </div>
+            <button
+              onClick={() => handleServiceToggle(setting.serviceType)}
+              disabled={saving}
+              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                isRunning 
+                  ? 'bg-red-500 text-white hover:bg-red-600' 
+                  : 'bg-green-500 text-white hover:bg-green-600'
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
+            >
+              {saving ? '...' : (isRunning ? 'Остановить' : 'Запустить')}
+            </button>
           </div>
         );
       

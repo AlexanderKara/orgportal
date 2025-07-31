@@ -159,11 +159,78 @@ const getActiveNotifications = async (req, res) => {
   }
 };
 
+// Получить пользовательские уведомления
+const getUserNotifications = async (req, res) => {
+  try {
+    const userId = req.employee.id;
+    
+    // Временные тестовые уведомления
+    const mockNotifications = [
+      {
+        id: 1,
+        title: 'Новое бронирование',
+        message: 'Ваше бронирование переговорной комнаты подтверждено',
+        type: 'booking',
+        is_read: false,
+        created_at: new Date().toISOString()
+      },
+      {
+        id: 2,
+        title: 'Напоминание о встрече',
+        message: 'Через 30 минут у вас запланирована встреча',
+        type: 'reminder',
+        is_read: true,
+        created_at: new Date(Date.now() - 3600000).toISOString()
+      }
+    ];
+
+    const unreadCount = mockNotifications.filter(n => !n.is_read).length;
+
+    res.json({
+      notifications: mockNotifications,
+      unread_count: unreadCount
+    });
+  } catch (error) {
+    console.error('Error getting user notifications:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+// Отметить уведомление как прочитанное
+const markNotificationAsRead = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.employee.id;
+    
+    // В реальной реализации здесь была бы логика обновления в БД
+    res.json({ success: true, message: 'Notification marked as read' });
+  } catch (error) {
+    console.error('Error marking notification as read:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+// Отметить все уведомления как прочитанные
+const markAllNotificationsAsRead = async (req, res) => {
+  try {
+    const userId = req.employee.id;
+    
+    // В реальной реализации здесь была бы логика обновления в БД
+    res.json({ success: true, message: 'All notifications marked as read' });
+  } catch (error) {
+    console.error('Error marking all notifications as read:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
 module.exports = {
   getNotifications,
   getNotification,
   createNotification,
   updateNotification,
   deleteNotification,
-  getActiveNotifications
+  getActiveNotifications,
+  getUserNotifications,
+  markNotificationAsRead,
+  markAllNotificationsAsRead
 }; 

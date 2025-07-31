@@ -44,7 +44,7 @@ module.exports = {
         await queryInterface.addIndex(tableName, columns, options);
       } catch (error) {
         if (error.message.includes('Duplicate key name')) {
-          console.log(`Index already exists, skipping...`);
+          console.log(`Индекс уже существует, пропускаем...`);
         } else {
           throw error;
         }

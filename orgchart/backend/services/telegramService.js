@@ -7,7 +7,7 @@ const sendAuthCode = async (telegram, code) => {
     const bot = getTelegramBot();
     
     if (!bot) {
-      console.log('Mock: Sending code via Telegram (bot not configured)');
+      console.log('Тест: отправка кода через Telegram (бот не настроен)');
       return true; // Return true for mock mode
     }
 
@@ -33,7 +33,7 @@ const sendAuthCode = async (telegram, code) => {
         // Delete auth code message after 2 minutes
         setTimeout(() => {
           bot.deleteMessage(employee.telegram_chat_id, result.message_id).catch(err => 
-            console.log('Could not delete auth code message:', err.message)
+            console.log('Не удалось удалить сообщение с кодом авторизации:', err.message)
           );
         }, 2 * 60 * 1000);
         
@@ -53,7 +53,7 @@ const sendAuthCode = async (telegram, code) => {
         // Delete auth code message after 2 minutes
         setTimeout(() => {
           bot.deleteMessage(result.chat.id, result.message_id).catch(err => 
-            console.log('Could not delete auth code message:', err.message)
+            console.log('Не удалось удалить сообщение с кодом авторизации:', err.message)
           );
         }, 2 * 60 * 1000);
         
@@ -85,11 +85,11 @@ const sendAuthCode = async (telegram, code) => {
           // Delete help message after 2 minutes
           setTimeout(() => {
             bot.deleteMessage(result.chat.id, result.message_id).catch(err => 
-              console.log('Could not delete help message:', err.message)
+              console.log('Не удалось удалить сообщение с подсказкой:', err.message)
             );
           }, 2 * 60 * 1000);
         } catch (helpError) {
-          console.error('Error sending help message:', helpError);
+          console.error('Ошибка при отправке сообщения с подсказкой:', helpError);
         }
         
         return { success: false, error: 'BOT_NOT_ADDED' };
@@ -100,7 +100,7 @@ const sendAuthCode = async (telegram, code) => {
     return { success: false, error: 'BOT_NOT_ADDED' };
     
   } catch (error) {
-    console.error('Telegram sending error:', error);
+    console.error('Ошибка отправки через Telegram:', error);
     
     // Check if user is not found in the application
     if (error.message && error.message.includes('User not found')) {
@@ -129,12 +129,12 @@ const sendAuthCode = async (telegram, code) => {
         // Delete HR response message after 2 minutes
         setTimeout(() => {
           bot.deleteMessage(result.chat.id, result.message_id).catch(err => 
-            console.log('Could not delete HR response message:', err.message)
+            console.log('Не удалось удалить сообщение HR:', err.message)
           );
         }, 2 * 60 * 1000);
         }
       } catch (sendError) {
-        console.error('Error sending HR response:', sendError);
+        console.error('Ошибка при отправке ответа HR:', sendError);
       }
       
       return false;
@@ -151,7 +151,7 @@ const userChatIds = new Map();
 const silentDeleteMessage = (bot, chatId, messageId) => {
   setTimeout(() => {
     bot.deleteMessage(chatId, messageId).catch(err => {
-      console.log('Could not delete message:', err.message);
+      console.log('Не удалось удалить сообщение:', err.message);
     });
   }, 2 * 60 * 1000); // 2 minutes
 };
@@ -193,7 +193,7 @@ const saveChatIdToDatabase = async (telegram, chatId) => {
     }
     return false;
   } catch (error) {
-    console.error('Error saving chat ID to database:', error);
+    console.error('Ошибка при сохранении chat ID в базу данных:', error);
     return false;
   }
 };
@@ -217,7 +217,7 @@ const getAllStoredChatIds = async () => {
 
     return chatIdsMap;
   } catch (error) {
-    console.error('Error getting stored chat IDs:', error);
+    console.error('Ошибка при получении сохранённых chat ID:', error);
     return new Map();
   }
 };

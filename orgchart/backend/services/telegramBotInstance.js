@@ -652,7 +652,7 @@ function getTelegramBot() {
   
   const token = process.env.TELEGRAM_BOT_TOKEN;
   if (!token) {
-    console.log('Telegram bot token not found, bot will not be initialized');
+    console.log('Токен Telegram бота не найден, бот не будет инициализирован');
     return null;
   }
   
@@ -664,7 +664,7 @@ function getTelegramBot() {
       setupBotCommands(botInstance);
       setupBotHandlers(botInstance);
       isInitialized = true;
-      console.log('Telegram bot initialized and handlers registered');
+      console.log('Telegram бот инициализирован и обработчики зарегистрированы');
     }
     
     return botInstance;
@@ -678,12 +678,12 @@ function getTelegramBot() {
 
 function stopTelegramBot() {
   if (botInstance) {
-    console.log('Stopping Telegram bot...');
+    console.log('Остановка Telegram бота...');
     try {
       botInstance.stopPolling();
       botInstance = null;
       isInitialized = false;
-      console.log('Telegram bot stopped');
+      console.log('Telegram бот остановлен');
     } catch (error) {
       console.error('Error stopping Telegram bot:', error);
     }

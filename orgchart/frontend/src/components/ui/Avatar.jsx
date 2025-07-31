@@ -2,6 +2,7 @@ import React, { useState, useContext, useMemo } from 'react';
 import { Camera } from 'lucide-react';
 import AvatarCropModal from '../AvatarCropModal';
 import helmetSvg from '../../res/helmet.svg';
+import roundstarSvg from '../../res/RoundStar.svg';
 import { SettingsContext } from '../../contexts/SettingsContext';
 
 const sizeConfig = {
@@ -11,7 +12,8 @@ const sizeConfig = {
     iconSize: 'w-12 h-12',
     px: 32,
     overlayPx: 48,
-    overlayOffsetY: -2
+    helmetOverlayOffsetY: -2,
+    roundstarOverlayOffsetY: 0
   },
   sm: {
     size: 'w-12 h-12',
@@ -19,7 +21,8 @@ const sizeConfig = {
     iconSize: 'w-18 h-18',
     px: 48,
     overlayPx: 64,
-    overlayOffsetY: -4
+    helmetOverlayOffsetY: -4,
+    roundstarOverlayOffsetY: 0
   },
   md: {
     size: 'w-16 h-16',
@@ -27,7 +30,8 @@ const sizeConfig = {
     iconSize: 'w-24 h-24',
     px: 64,
     overlayPx: 88,
-    overlayOffsetY: -6
+    helmetOverlayOffsetY: -6,
+    roundstarOverlayOffsetY: 0
   },
   lg: {
     size: 'w-20 h-20',
@@ -35,7 +39,8 @@ const sizeConfig = {
     iconSize: 'w-28 h-28',
     px: 80,
     overlayPx: 112,
-    overlayOffsetY: -7
+    helmetOverlayOffsetY: -7,
+    roundstarOverlayOffsetY: 0
   },
   xl: {
     size: 'w-24 h-24',
@@ -43,7 +48,8 @@ const sizeConfig = {
     iconSize: 'w-32 h-32',
     px: 96,
     overlayPx: 128,
-    overlayOffsetY: -9
+    helmetOverlayOffsetY: -9,
+    roundstarOverlayOffsetY: 0
   },
   '2xl': {
     size: 'w-32 h-32',
@@ -51,7 +57,8 @@ const sizeConfig = {
     iconSize: 'w-40 h-40',
     px: 128,
     overlayPx: 160,
-    overlayOffsetY: -10
+    helmetOverlayOffsetY: -10,
+    roundstarOverlayOffsetY: 0
   },
   '3xl': {
     size: 'w-40 h-40',
@@ -59,7 +66,8 @@ const sizeConfig = {
     iconSize: 'w-48 h-48',
     px: 160,
     overlayPx: 192,
-    overlayOffsetY: -12
+    helmetOverlayOffsetY: -12,
+    roundstarOverlayOffsetY: 0
   },
   '40': {
     size: 'w-10 h-10',
@@ -67,7 +75,8 @@ const sizeConfig = {
     iconSize: 'w-14 h-14',
     px: 40,
     overlayPx: 56,
-    overlayOffsetY: -2
+    helmetOverlayOffsetY: -2,
+    roundstarOverlayOffsetY: 0
   }
 };
 
@@ -86,6 +95,7 @@ export default function Avatar({
   
   const settingsContext = useContext(SettingsContext);
   const showHelmetOverlay = settingsContext?.settings?.showHelmetOverlay ?? true;
+  const avatarOverlay = settingsContext?.settings?.avatarOverlay ?? 'helmet';
   const [showCropModal, setShowCropModal] = useState(false);
   const [selectedImageFile, setSelectedImageFile] = useState(null);
   const [croppedImage, setCroppedImage] = useState('');
@@ -181,8 +191,9 @@ export default function Avatar({
   // Use cropped image if available, otherwise use src
   const displayImage = croppedImage || src;
 
-  // Check if should show helmet overlay
-  const shouldShowHelmet = showHelmetOverlay && roleInDept === 'lead';
+  // Check if should show overlay
+  const shouldShowOverlay = showHelmetOverlay && roleInDept === 'lead';
+  const overlaySvg = avatarOverlay === 'roundstar' ? roundstarSvg : helmetSvg;
 
   return (
     <>
@@ -223,8 +234,8 @@ export default function Avatar({
             </div>
           )}
         </div>
-        {/* Helmet overlay for leads - outside the overflow-hidden container */}
-        {shouldShowHelmet && (
+        {/* Overlay for leads - outside the overflow-hidden container */}
+        {shouldShowOverlay && (
           <div className="absolute flex items-center justify-center pointer-events-none" style={{ 
             zIndex: 50,
             left: '50%',
@@ -232,10 +243,10 @@ export default function Avatar({
             transform: 'translate(-50%, -50%)',
             width: config.overlayPx,
             height: config.overlayPx,
-            marginTop: config.overlayOffsetY
+            marginTop: avatarOverlay === 'helmet' ? config.helmetOverlayOffsetY : config.roundstarOverlayOffsetY
           }}>
             <img 
-              src={helmetSvg} 
+              src={overlaySvg} 
               alt="Lead" 
               style={{ width: config.overlayPx, height: config.overlayPx }}
             />

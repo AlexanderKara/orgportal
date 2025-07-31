@@ -5,7 +5,7 @@ module.exports = {
     // Проверяем, существует ли таблица
     const tables = await queryInterface.showAllTables();
     if (tables.includes('token_types')) {
-      console.log('Table token_types already exists, skipping creation');
+      console.log('Таблица token_types уже существует, пропускаем создание');
       return;
     }
 

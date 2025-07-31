@@ -4,18 +4,34 @@ import { Outlet } from 'react-router-dom';
 
 function getScrollbarWidth() {
   if (typeof window === 'undefined') return 0;
-  // Всегда измеряем ширину скроллбара
-  const outer = document.createElement('div');
-  outer.style.visibility = 'hidden';
-  outer.style.overflow = 'scroll';
-  document.body.appendChild(outer);
-  const inner = document.createElement('div');
-  outer.appendChild(inner);
-  const scrollbarWidth = outer.offsetWidth - inner.offsetWidth;
-  document.body.removeChild(outer);
-  // Проверяем, есть ли скроллбар у окна
-  const hasScrollbar = window.innerWidth > document.documentElement.clientWidth;
-  return hasScrollbar ? scrollbarWidth : 0;
+  
+  try {
+    // Создаем временный div для измерения
+    const outer = document.createElement('div');
+    outer.style.visibility = 'hidden';
+    outer.style.overflow = 'scroll';
+    outer.style.position = 'absolute';
+    outer.style.top = '-9999px';
+    outer.style.left = '-9999px';
+    
+    document.body.appendChild(outer);
+    const inner = document.createElement('div');
+    outer.appendChild(inner);
+    
+    const scrollbarWidth = outer.offsetWidth - inner.offsetWidth;
+    
+    // Безопасно удаляем элементы
+    if (outer.parentNode) {
+      outer.parentNode.removeChild(outer);
+    }
+    
+    // Проверяем, есть ли скроллбар у окна
+    const hasScrollbar = window.innerWidth > document.documentElement.clientWidth;
+    return hasScrollbar ? scrollbarWidth : 0;
+  } catch (error) {
+    console.warn('Error calculating scrollbar width:', error);
+    return 0;
+  }
 }
 
 export default function MainLayout() {
@@ -23,16 +39,31 @@ export default function MainLayout() {
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1920);
   useEffect(() => {
     const updateScrollbarWidth = () => {
-      const width = getScrollbarWidth();
-      setScrollbarWidth(width);
+      try {
+        const width = getScrollbarWidth();
+        setScrollbarWidth(width);
+      } catch (error) {
+        console.warn('Error updating scrollbar width:', error);
+        setScrollbarWidth(0);
+      }
     };
     const handleResize = () => {
-      setWindowWidth(window.innerWidth);
-      updateScrollbarWidth();
+      try {
+        setWindowWidth(window.innerWidth);
+        updateScrollbarWidth();
+      } catch (error) {
+        console.warn('Error handling resize:', error);
+      }
     };
-    updateScrollbarWidth();
+    
+    // Добавляем небольшую задержку для стабилизации DOM
+    const timeoutId = setTimeout(updateScrollbarWidth, 100);
+    
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    return () => {
+      clearTimeout(timeoutId);
+      window.removeEventListener('resize', handleResize);
+    };
   }, []);
 
   // Вычисляем paddingLeft и paddingRight аналогично Header

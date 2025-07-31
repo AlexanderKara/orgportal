@@ -5,7 +5,7 @@ module.exports = {
     // Проверяем, существует ли таблица
     const tableExists = await queryInterface.showAllTables();
     if (tableExists.includes('employee_skills')) {
-      console.log('Table employee_skills already exists, skipping creation');
+      console.log('Таблица employee_skills уже существует, пропускаем создание');
       return;
     }
 
@@ -22,19 +22,19 @@ module.exports = {
     try {
       await queryInterface.addIndex('employee_skills', ['employee_id']);
     } catch (e) {
-      console.log('Index on employee_id already exists');
+              console.log('Индекс по employee_id уже существует');
     }
     
     try {
       await queryInterface.addIndex('employee_skills', ['skill_id']);
     } catch (e) {
-      console.log('Index on skill_id already exists');
+              console.log('Индекс по skill_id уже существует');
     }
     
     try {
       await queryInterface.addIndex('employee_skills', ['skill_level_id']);
     } catch (e) {
-      console.log('Index on skill_level_id already exists');
+              console.log('Индекс по skill_level_id уже существует');
     }
   },
   async down(queryInterface, Sequelize) {

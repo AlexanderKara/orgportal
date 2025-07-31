@@ -3,16 +3,20 @@ const notificationService = require('../services/notificationService');
 // Запустить сервис уведомлений
 const startNotificationService = async (req, res) => {
   try {
-    notificationService.start();
+    console.log('Попытка запуска сервиса уведомлений...');
+    notificationService.startNotificationService();
+    console.log('Сервис уведомлений успешно запущен');
     res.json({ 
       success: true, 
       message: 'Notification service started successfully' 
     });
   } catch (error) {
     console.error('Error starting notification service:', error);
+    console.error('Error stack:', error.stack);
     res.status(500).json({ 
       success: false, 
-      error: 'Failed to start notification service' 
+      error: 'Failed to start notification service',
+      details: error.message
     });
   }
 };
@@ -20,16 +24,20 @@ const startNotificationService = async (req, res) => {
 // Остановить сервис уведомлений
 const stopNotificationService = async (req, res) => {
   try {
-    notificationService.stop();
+    console.log('Попытка остановки сервиса уведомлений...');
+    notificationService.stopNotificationService();
+    console.log('Сервис уведомлений успешно остановлен');
     res.json({ 
       success: true, 
       message: 'Notification service stopped successfully' 
     });
   } catch (error) {
     console.error('Error stopping notification service:', error);
+    console.error('Error stack:', error.stack);
     res.status(500).json({ 
       success: false, 
-      error: 'Failed to stop notification service' 
+      error: 'Failed to stop notification service',
+      details: error.message
     });
   }
 };

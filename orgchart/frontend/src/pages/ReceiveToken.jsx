@@ -37,7 +37,6 @@ export default function ReceiveToken() {
       try {
         setLoading(true);
         const response = await api.get(`/api/tokens/${tokenHash}`);
-        console.log('Token response:', response);
         setToken(response);
         setError(null);
       } catch (err) {

@@ -56,10 +56,10 @@ export default function SendTokensModal({
   // Загружаем сотрудников при открытии модального окна
   useEffect(() => {
     if (isOpen) {
-      console.log('SendTokensModal opened with tokens:', tokens);
-      console.log('Tokens array length:', tokens?.length || 0);
-      console.log('Tokens array content:', tokens);
-      console.log('Preselected token:', preselectedToken);
+          console.log('SendTokensModal открыт с токенами:', tokens);
+    console.log('Длина массива токенов:', tokens?.length || 0);
+    console.log('Содержимое массива токенов:', tokens);
+    console.log('Предвыбранный токен:', preselectedToken);
       
       loadEmployees();
       setSelectedEmployees([]);
@@ -75,7 +75,7 @@ export default function SendTokensModal({
           token: preselectedToken
         };
         setSelectedTokenOption(tokenOption);
-        console.log('Set preselected token option:', tokenOption);
+        console.log('Установлен предвыбранный токен:', tokenOption);
       } else {
         setSelectedToken(null);
         setSelectedTokenOption(null);
@@ -100,9 +100,9 @@ export default function SendTokensModal({
 
   // Мемоизированный список опций токенов
   const tokenOptions = useMemo(() => {
-    console.log('Creating token options from tokens:', tokens);
+    console.log('Создание опций токенов из токенов:', tokens);
     if (!tokens || !Array.isArray(tokens) || tokens.length === 0) {
-      console.log('No tokens available for options');
+      console.log('Нет доступных токенов для опций');
       return [];
     }
     
@@ -112,7 +112,7 @@ export default function SendTokensModal({
       token: token
     }));
     
-    console.log('Generated token options:', options);
+    console.log('Сгенерированные опции токенов:', options);
     return options;
   }, [tokens]);
 

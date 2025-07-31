@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const tokenController = require('../controllers/tokenController');
-const { authMiddleware } = require('../middleware/auth');
+const { authMiddleware, adminMiddleware } = require('../middleware/auth');
 
 // Импортируем модели для использования в роутах
 const { Token, TokenType, Employee, TokenTransaction } = require('../models');
@@ -9,8 +9,10 @@ const { Token, TokenType, Employee, TokenTransaction } = require('../models');
 // Получить типы токенов
 router.get('/types', authMiddleware, tokenController.getTokenTypes);
 
-// Получить статус сервиса распределения токенов
+// Сервис распределения токенов
 router.get('/distribution-service/status', authMiddleware, tokenController.getTokenDistributionServiceStatus);
+router.post('/distribution-service/start', authMiddleware, adminMiddleware, tokenController.startTokenDistributionService);
+router.post('/distribution-service/stop', authMiddleware, adminMiddleware, tokenController.stopTokenDistributionService);
 
 // Диагностический эндпоинт (без авторизации для отладки)
 router.get('/debug/employee/:employeeId', async (req, res) => {

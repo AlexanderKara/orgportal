@@ -9,11 +9,11 @@ module.exports = {
       watch: false,
       max_memory_restart: '1G',
       env: {
-        NODE_ENV: 'production',
+        NODE_ENV: 'development',
         PORT: 3001
       },
       env_production: {
-        NODE_ENV: 'production',
+        NODE_ENV: 'development',
         PORT: 3001
       },
       error_file: './logs/backend-error.log',
@@ -25,18 +25,18 @@ module.exports = {
       name: 'orgchart-frontend',
       cwd: './orgchart/frontend',
       script: 'npm',
-      args: 'run preview -- --host 0.0.0.0 --port 4173',
+      args: 'run dev -- --host 0.0.0.0 --port 5173',
       instances: 1,
       autorestart: true,
       watch: false,
       max_memory_restart: '512M',
       env: {
-        NODE_ENV: 'production',
-        PORT: 4173
+        NODE_ENV: 'development',
+        PORT: 5173
       },
       env_production: {
-        NODE_ENV: 'production',
-        PORT: 4173
+        NODE_ENV: 'development',
+        PORT: 5173
       },
       error_file: './logs/frontend-error.log',
       out_file: './logs/frontend-out.log',

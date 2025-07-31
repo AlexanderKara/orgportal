@@ -120,11 +120,11 @@ export default function TokenModal({ isOpen, onClose, onSubmit, token = null }) 
           label: folder
         })));
       } else {
-        console.warn('Failed to load folders, using fallback');
+        console.warn('Не удалось загрузить папки, используем резервные');
         setAvailableFolders([]);
       }
     } catch (error) {
-      console.error('Error loading folders:', error);
+      console.error('Ошибка загрузки папок:', error);
       setAvailableFolders([]);
     }
   };

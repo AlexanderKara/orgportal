@@ -33,6 +33,9 @@ const ratingRoutes = require('./routes/ratings');
 const distributionSettingsRoutes = require('./routes/distributionSettings');
 const logsRoutes = require('./routes/logs');
 const achievementRoutes = require('./routes/achievements');
+const meetingRoomRoutes = require('./routes/meetingRooms');
+const appSettingsRoutes = require('./routes/appSettings');
+const meetingRoomServiceRoutes = require('./routes/meetingRoomService');
 
 // Import middleware
 const { errorHandler } = require('./middleware/errorHandler');
@@ -43,6 +46,7 @@ const { performanceMiddleware, dbPerformanceMiddleware } = require('./middleware
 const notificationService = require('./services/notificationService');
 const { getTelegramBot } = require('./services/telegramBotInstance');
 const tokenDistributionService = require('./services/tokenDistributionService');
+const meetingRoomService = require('./services/meetingRoomService');
 
 const app = express();
 
@@ -73,7 +77,7 @@ app.use(dbPerformanceMiddleware);
 
 // Логирование всех входящих запросов
 app.use((req, res, next) => {
-  console.log('INCOMING:', req.method, req.url);
+  console.log('ВХОДЯЩИЙ ЗАПРОС:', req.method, req.url);
   next();
 });
 app.use(helmet({
@@ -99,22 +103,22 @@ app.use(cors({
   origin: (origin, callback) => {
     // Разрешаем запросы без origin (мобильные приложения, Postman, etc.)
     if (!origin) {
-      console.log('CORS: Allowing request without origin (mobile app, etc.)');
+      console.log('CORS: Разрешаем запрос без origin (мобильное приложение и т.д.)');
       return callback(null, true);
     }
     
     // Разрешаем localhost в development
     if (process.env.NODE_ENV === 'development' && origin.includes('localhost')) {
-      console.log('CORS: Allowing localhost in development:', origin);
+      console.log('CORS: Разрешаем localhost в режиме разработки:', origin);
       return callback(null, true);
     }
     
     // Проверяем разрешенные origins
     if (corsOrigins.indexOf(origin) !== -1) {
-      console.log('CORS: Allowing origin:', origin);
+      console.log('CORS: Разрешаем origin:', origin);
       callback(null, true);
     } else {
-      console.log('CORS blocked origin:', origin);
+      console.log('CORS заблокирован origin:', origin);
       callback(new Error('Not allowed by CORS'));
     }
   },
@@ -151,10 +155,10 @@ app.use(cors({
 
 // В режиме разработки отключаем лимиты для API
 if (process.env.NODE_ENV === 'development') {
-  console.log('Development mode: rate limiting disabled for API endpoints');
+  console.log('Режим разработки: ограничение скорости отключено для API endpoints');
 } else {
   // app.use('/api/', generalLimiter);
-  console.log('Production mode: rate limiting temporarily disabled for testing');
+  console.log('Продакшн режим: ограничение скорости временно отключено для тестирования');
 }
 
 app.use(express.json({ limit: '10mb' }));
@@ -301,6 +305,9 @@ app.use('/api/notification-chats', authMiddleware, notificationChatRoutes);
 app.use('/api/notification-service', authMiddleware, notificationServiceRoutes);
 app.use('/api/telegram', authMiddleware, telegramRoutes);
 app.use('/api/achievements', achievementRoutes);
+app.use('/api/meeting-rooms', meetingRoomRoutes);
+app.use('/api/meeting-room-service', authMiddleware, meetingRoomServiceRoutes);
+app.use('/api/app-settings', authMiddleware, appSettingsRoutes);
 // Public token image routes (no authentication required)
 app.get('/api/tokens/images/folders', (req, res) => {
   try {
@@ -518,24 +525,25 @@ const PORT = process.env.PORT || 3001;
 const startServer = async () => {
   try {
     await initializeDatabase();
+    
+    // Инициализируем сервисы до запуска сервера
+    await notificationService.initializeService();
+    await tokenDistributionService.initializeService();
+    await meetingRoomService.initializeService();
+    
     app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
+      console.log(`Сервер запущен на порту ${PORT}`);
       
       // Инициализируем Telegram бота ПЕРЕД запуском других сервисов
       const bot = getTelegramBot();
       if (bot) {
-        console.log('Telegram bot service started');
+        console.log('Сервис Telegram бота запущен');
       } else {
-        console.log('Telegram bot not configured (no token)');
+        console.log('Telegram бот не настроен (нет токена)');
       }
       
-      // Запускаем сервис уведомлений ПОСЛЕ инициализации бота
-      notificationService.start();
-      console.log('Notification service started');
-      
-      // Запускаем планировщик автоматического распределения токенов
-      // tokenDistributionService.startScheduler();
-      // console.log('Token distribution scheduler started');
+      console.log('Сервис уведомлений инициализирован');
+      console.log('Сервис распределения токенов инициализирован');
     });
   } catch (error) {
     console.error('Critical error during server startup:', error);

@@ -29,6 +29,10 @@ const Vacation = require('./Vacation');
 const Notification = require('./Notification');
 const Template = require('./Template');
 const NotificationChat = require('./NotificationChat');
+const MeetingRoom = require('./MeetingRoom');
+const MeetingRoomBooking = require('./MeetingRoomBooking');
+const BookingRequest = require('./BookingRequest');
+const AppSettings = require('./AppSettings')(sequelize);
 
 // 2. Собираем все модели в объект
 const models = {
@@ -49,6 +53,9 @@ const models = {
   Notification,
   Template,
   NotificationChat,
+  MeetingRoom,
+  MeetingRoomBooking,
+  BookingRequest,
   TokenType,
   EmployeeToken,
   TokenTransaction,
@@ -57,6 +64,7 @@ const models = {
   EmployeeAchievement,
   TokenDistribution,
   DistributionSettings,
+  AppSettings,
 };
 
 // 3. Только теперь вызываем ассоциации для всех моделей

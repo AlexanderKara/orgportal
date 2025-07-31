@@ -5,7 +5,7 @@ module.exports = {
     // Проверяем, существует ли таблица
     const tables = await queryInterface.showAllTables();
     if (tables.includes('token_distributions')) {
-      console.log('Table token_distributions already exists, skipping creation');
+      console.log('Таблица token_distributions уже существует, пропускаем создание');
       return;
     }
 
@@ -35,19 +35,19 @@ module.exports = {
     try {
       await queryInterface.addIndex('token_distributions', ['tokenTypeId']);
     } catch (error) {
-      console.log('Index token_distributions_tokenTypeId already exists');
+              console.log('Индекс token_distributions_tokenTypeId уже существует');
     }
 
     try {
       await queryInterface.addIndex('token_distributions', ['status']);
     } catch (error) {
-      console.log('Index token_distributions_status already exists');
+              console.log('Индекс token_distributions_status уже существует');
     }
 
     try {
       await queryInterface.addIndex('token_distributions', ['scheduledDate']);
     } catch (error) {
-      console.log('Index token_distributions_scheduledDate already exists');
+              console.log('Индекс token_distributions_scheduledDate уже существует');
     }
   },
   async down(queryInterface, Sequelize) {

@@ -29,35 +29,43 @@ export default function Admin() {
   const [notificationServiceStatus, setNotificationServiceStatus] = useState('unknown');
   // Статус сервиса распределения токенов
   const [tokenDistributionServiceStatus, setTokenDistributionServiceStatus] = useState('unknown');
+  // Статус сервиса переговорок
+  const [meetingRoomServiceStatus, setMeetingRoomServiceStatus] = useState('unknown');
+
+  // Объединенная загрузка статуса всех сервисов
   useEffect(() => {
     let isMounted = true;
-    const fetchStatus = async () => {
+    
+    const fetchAllServiceStatuses = async () => {
       try {
-        const res = await api.getNotificationServiceStatus();
-        const status = res?.data?.serviceStatus || res?.serviceStatus || 'unknown';
-        if (isMounted) setNotificationServiceStatus(status);
-      } catch {
-        if (isMounted) setNotificationServiceStatus('unknown');
+        const [notificationRes, tokenRes, meetingRoomRes] = await Promise.all([
+          api.getNotificationServiceStatus().catch(() => ({})),
+          api.getTokenDistributionServiceStatus().catch(() => ({})),
+          api.getMeetingRoomServiceStatus().catch(() => ({}))
+        ]);
+
+        if (isMounted) {
+          setNotificationServiceStatus(notificationRes?.data?.serviceStatus || notificationRes?.serviceStatus || 'unknown');
+          setTokenDistributionServiceStatus(tokenRes?.data?.serviceStatus || tokenRes?.serviceStatus || 'unknown');
+          setMeetingRoomServiceStatus(meetingRoomRes?.data?.serviceStatus || meetingRoomRes?.serviceStatus || 'unknown');
+        }
+      } catch (error) {
+        console.error('Error fetching service statuses:', error);
+        if (isMounted) {
+          setNotificationServiceStatus('unknown');
+          setTokenDistributionServiceStatus('unknown');
+          setMeetingRoomServiceStatus('unknown');
+        }
       }
     };
-    fetchStatus();
-    const interval = setInterval(fetchStatus, 30000);
-    return () => { isMounted = false; clearInterval(interval); };
-  }, []);
-  useEffect(() => {
-    let isMounted = true;
-    const fetchTokenStatus = async () => {
-      try {
-        const res = await api.getTokenDistributionServiceStatus();
-        const status = res?.data?.serviceStatus || res?.serviceStatus || 'unknown';
-        if (isMounted) setTokenDistributionServiceStatus(status);
-      } catch {
-        if (isMounted) setTokenDistributionServiceStatus('unknown');
-      }
+
+    fetchAllServiceStatuses();
+    const interval = setInterval(fetchAllServiceStatuses, 30000);
+    
+    return () => { 
+      isMounted = false; 
+      clearInterval(interval); 
     };
-    fetchTokenStatus();
-    const interval = setInterval(fetchTokenStatus, 30000);
-    return () => { isMounted = false; clearInterval(interval); };
   }, []);
 
   const [isEmployeeModalOpen, setIsEmployeeModalOpen] = useState(false);
@@ -140,6 +148,41 @@ export default function Admin() {
       items: [
         { label: 'Отпуска', to: '/admin/vacations', icon: <Calendar className="w-4 h-4" /> },
         { label: 'Типы отпусков', action: 'vacationTypes', icon: <Calendar className="w-4 h-4" /> },
+      ]
+    },
+    {
+      title: 'Управление переговорными',
+      icon: <MessageSquare className="w-6 h-6" />,
+      color: 'text-indigo-600',
+      bgColor: 'bg-indigo-500/10',
+      items: [
+        { label: 'Переговорные', to: '/admin/meeting-rooms', icon: <MessageSquare className="w-4 h-4" /> },
+        {
+          label: (
+            <span className="flex items-center gap-2">
+              Сервис переговорок
+              <span
+                className={
+                  'inline-block w-2 h-2 rounded-full ' +
+                  (meetingRoomServiceStatus === 'running'
+                    ? 'bg-green-500'
+                    : meetingRoomServiceStatus === 'stopped'
+                    ? 'bg-red-500'
+                    : 'bg-yellow-400 animate-pulse')
+                }
+                title={
+                  meetingRoomServiceStatus === 'running'
+                    ? 'Сервис переговорок работает'
+                    : meetingRoomServiceStatus === 'stopped'
+                    ? 'Сервис переговорок остановлен'
+                    : 'Статус неизвестен'
+                }
+              />
+            </span>
+          ),
+          to: '/admin/meeting-room-service',
+          icon: <Activity className="w-4 h-4" />
+        },
       ]
     },
     {
